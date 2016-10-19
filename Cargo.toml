@@ -4,4 +4,5 @@ version = "0.1.0"
 authors = ["Martin Tomasi <martin.tomasi@gmail.com>"]
 
 [dependencies]
-postgres = "*"
+postgres = "0.12"
+error-chain = "0.4"
