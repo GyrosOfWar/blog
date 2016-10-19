@@ -5,4 +5,10 @@ authors = ["Martin Tomasi <martin.tomasi@gmail.com>"]
 
 [dependencies]
 postgres = "0.12"
-error-chain = "0.4"
+quick-error = "1.1"
+r2d2 = "0.7"
+r2d2_postgres = "0.11"
+log = "0.3"
+env_logger = "0.3"
+dotenv = "0.8"
+time = "0.1"

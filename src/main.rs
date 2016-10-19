@@ -1,106 +1,124 @@
 #![recursion_limit = "1024"]
 
-extern crate postgres;
 #[macro_use]
-extern crate error_chain;
+extern crate quick_error;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
+extern crate dotenv;
+extern crate time;
 
-use std::rc::Rc;
+extern crate postgres;
+extern crate r2d2;
+extern crate r2d2_postgres;
 
-use postgres::Connection;
-use postgres::types::ToSql;
+use std::env;
 
-use errors::*;
+use r2d2_postgres::{TlsMode, PostgresConnectionManager};
+
+mod model;
+mod dao;
 
 mod errors {
-    error_chain! { }
-}
+    use postgres;
+    quick_error! {
+        #[derive(Debug)]
+        pub enum Error {
+            Postgres(err: postgres::error::Error) {
+                cause(err)
+                from()
+                description(err.description())
+            }
 
-pub trait Dao<T, K> 
-    where K: Eq + ToSql
-{
-    fn get_all(&mut self) -> postgres::Result<Vec<T>>;
-    fn insert_or_update(&mut self, value: T) -> postgres::Result<()>;
-    fn get_one(&mut self, key: K) -> postgres::Result<T>;
-    fn value_exists(&mut self, value: T) -> postgres::Result<bool>;
-    fn key_exists(&mut self, key: K) -> postgres::Result<bool>;
-}
-
-#[derive(Debug, Clone)]
-pub struct Tag {
-    pub name: String,
-    pub id: u32,
-}
-
-pub struct TagDao {
-    conn: Rc<Connection>,
-}
-
-impl Dao<Tag, u32> for TagDao {
-    fn insert_or_update(&mut self, value: Tag) -> postgres::Result<()> {
-        try!(self.conn.execute("INSERT INTO tags (name) VALUES ($1) ON CONFLICT DO NOTHING", &[&value.name]));
-        Ok(())
-    }
-
-    fn get_one(&mut self, key: u32) -> postgres::Result<Tag> {
-        let query = try!(self.conn.query("SELECT name, id FROM tags WHERE id = $1", &[&key]));
-        if query.is_empty() {
-            unimplemented!()
-        } else {
-            let row = query.get(0);
-            Ok(Tag {
-                name: row.get(0),
-                id: row.get(1)
-            })
+            ExpectedResult {
+                description("Expected a result, got none")
+            }
         }
     }
 
-    fn get_all(&mut self) -> postgres::Result<Vec<Tag>> {
-        let mut tags = vec![];
-        for row in try!(self.conn.query("SELECT name, id FROM tags", &[])).iter() {
-            let tag = Tag {
-                name: row.get(0),
-                id: row.get(1)
-            };
-            tags.push(tag);
+    pub type Result<T> = ::std::result::Result<T, Error>;
+}
+
+pub struct Config {
+    db_string: String,
+}
+
+impl Config {
+    pub fn new() -> Config {
+        // TODO
+        Config { db_string: String::from("postgres://martin:martin4817@localhost/blog") }
+    }
+}
+
+fn configure_logger() {
+    dotenv::dotenv().unwrap();
+    let format = |record: &log::LogRecord| {
+        let cur_time = time::now();
+        format!("{:02}:{:02}:{:02} [{}] {}: {}",
+                cur_time.tm_hour,
+                cur_time.tm_min,
+                cur_time.tm_sec,
+                record.level(),
+                record.target(),
+                record.args())
+    };
+    let mut builder = env_logger::LogBuilder::new();
+    builder.format(format);
+    builder.parse(&env::var("RUST_LOG").unwrap());
+    builder.init().unwrap();
+}
+
+pub struct App {
+    pub conn_pool: r2d2::Pool<PostgresConnectionManager>,
+    pub config: Config,
+}
+
+impl App {
+    pub fn new() -> App {
+        configure_logger();
+        info!("Set up logger");
+
+        let config = Config::new();
+        let manager = PostgresConnectionManager::new(config.db_string.as_str(), TlsMode::None)
+            .unwrap();
+        let pool = r2d2::Pool::new(r2d2::Config::default(), manager).unwrap();
+        info!("Set up connection pool");
+        App {
+            conn_pool: pool,
+            config: config,
         }
-
-        Ok(tags)
     }
-
-    fn value_exists(&mut self, value: Tag) -> postgres::Result<bool> {
-        // let query = try!(self.conn.query("SELECT "));
-        unimplemented!()
-    }
-
-    fn key_exists(&mut self, key: u32) -> postgres::Result<bool> {
-        unimplemented!()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Post {
-    pub title: String,
-    pub text: String,
-    pub tags: Vec<Tag>,
-}
-
-#[derive(Debug, Clone)]
-pub struct User {
-    pub name: String,
-    pub pw_hash: String,
-    pub posts: Vec<Post>,
 }
 
 fn main() {
-    println!("Hello, world!");
+    let app = App::new();
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::dao::{self, Dao};
+    use super::model::Tag;
 
     #[test]
     fn test_tag_dao() {
-        // let tag = Tag
+        let app = App::new();
+        let conn = app.conn_pool.get().unwrap();
+        let tag_dao = dao::TagDao::new(conn);
+        let name = String::from("test");
+        let tag = Tag {
+            name: name.clone(),
+            id: 1,
+        };
+        tag_dao.insert_or_update(&tag).unwrap();
+
+        let all = tag_dao.get_all().unwrap();
+        assert_eq!(all[0].name, name);
+
+        assert!(tag_dao.value_exists(&all[0]).unwrap());
+        assert!(tag_dao.key_exists(&all[0].id).unwrap());
+
+        let one = tag_dao.get_one(&all[0].id).unwrap();
+        assert_eq!(one.name, name);
     }
 }
