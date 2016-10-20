@@ -87,6 +87,31 @@ pub struct PostDao {
     conn: Connection,
 }
 
+impl PostDao {
+    pub fn new(conn: Connection) -> PostDao {
+        PostDao { conn: conn }
+    }
+
+    fn query_for_tags(&self, id: i32) -> Result<Vec<Tag>> {
+        let query = try!(self.conn
+            .query("SELECT t.name, t.id FROM posts_tags p INNER JOIN tags t ON p.tag_id = t.id \
+                    WHERE post_id = $1",
+                   &[&id]));
+        if query.is_empty() {
+            Err(Error::ExpectedResult)
+        } else {
+            Ok(query.iter()
+                .map(|row| {
+                    Tag {
+                        name: row.get(0),
+                        id: row.get(1),
+                    }
+                })
+                .collect())
+        }
+    }
+}
+
 impl Dao<Post, i32> for PostDao {
     fn get_all(&self) -> Result<Vec<Post>> {
         unimplemented!()
@@ -97,15 +122,23 @@ impl Dao<Post, i32> for PostDao {
     }
 
     fn get_one(&self, key: &i32) -> Result<Post> {
-        let query = try!(self.conn.query("SELECT title, content, id FROM posts WHERE id = $1", &[&key]));
+        let query = try!(self.conn.query("SELECT title, content, id FROM posts WHERE id = $1",
+                                         &[&key]));
         if query.is_empty() {
             Err(Error::ExpectedResult)
         } else {
             let row = query.get(0);
             let title: String = row.get(0);
             let content: String = row.get(1);
-            let id: String = row.get(2);
-            unimplemented!()
+            let id: i32 = row.get(2);
+            let tags = try!(self.query_for_tags(id));
+
+            Ok(Post {
+                title: title,
+                content: content,
+                id: id,
+                tags: tags,
+            })
         }
     }
 
@@ -116,5 +149,4 @@ impl Dao<Post, i32> for PostDao {
     fn key_exists(&self, key: &i32) -> Result<bool> {
         unimplemented!()
     }
-
 }

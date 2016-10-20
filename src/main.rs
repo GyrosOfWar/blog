@@ -13,6 +13,9 @@ extern crate r2d2;
 extern crate r2d2_postgres;
 
 use std::env;
+use std::io::prelude::*;
+use std::fs::File;
+use std::path::Path;
 
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
 
@@ -21,10 +24,25 @@ mod dao;
 
 mod errors {
     use postgres;
+    use r2d2;
+    use std::io;
+
     quick_error! {
         #[derive(Debug)]
         pub enum Error {
+            Io(err: io::Error) {
+                cause(err)
+                from()
+                description(err.description())
+            }
+
             Postgres(err: postgres::error::Error) {
+                cause(err)
+                from()
+                description(err.description())
+            }
+
+            ConnTimeout(err: r2d2::GetTimeout) {
                 cause(err)
                 from()
                 description(err.description())
@@ -33,6 +51,7 @@ mod errors {
             ExpectedResult {
                 description("Expected a result, got none")
             }
+
         }
     }
 
@@ -44,9 +63,9 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new() -> Config {
+    pub fn new(db_string: Option<String>) -> Config {
         // TODO
-        Config { db_string: String::from("postgres://martin:martin4817@localhost/blog") }
+        Config { db_string: db_string.unwrap_or(String::from("postgres://martin:martin4817@localhost/blog")) }
     }
 }
 
@@ -74,11 +93,13 @@ pub struct App {
 }
 
 impl App {
-    pub fn new() -> App {
-        configure_logger();
+    pub fn new(db_string: Option<String>, init_logger: bool) -> App {
+        if init_logger {
+            configure_logger();
+        }
         info!("Set up logger");
 
-        let config = Config::new();
+        let config = Config::new(db_string);
         let manager = PostgresConnectionManager::new(config.db_string.as_str(), TlsMode::None)
             .unwrap();
         let pool = r2d2::Pool::new(r2d2::Config::default(), manager).unwrap();
@@ -88,21 +109,60 @@ impl App {
             config: config,
         }
     }
+
+    pub fn drop_db(&self) -> errors::Result<()> {
+        let conn = try!(self.conn_pool.get());
+        execute_sql_file("drop_db.sql", &conn)
+    }
+
+    pub fn create_db(&self) -> errors::Result<()> {
+        let conn = try!(self.conn_pool.get());
+        execute_sql_file("create_db.sql", &conn)
+    }
+}
+
+fn execute_sql_file<P>(path: P, connection: &dao::Connection) -> errors::Result<()> 
+    where P: AsRef<Path>
+{
+    let mut file = try!(File::open(&path));
+    let mut text = String::new();
+    try!(file.read_to_string(&mut text));
+    info!("Executing SQL script {}", path.as_ref().display());
+    for statement in text.split(';') {
+        let statement = statement.trim();
+        debug!("Executing statement {}", statement);
+        try!(connection.execute(statement, &[]));
+    }
+    info!("Finished executing SQL!");
+    Ok(())
 }
 
 fn main() {
-    let app = App::new();
+    let app = App::new(None, true);
 }
 
-#[cfg(test)]
+// #[cfg(test)]
+#[allow(dead_code, unused)]
 mod tests {
     use super::*;
     use super::dao::{self, Dao};
     use super::model::Tag;
 
-    #[test]
+    fn prepare_app(init_logger: bool) -> App {
+        let app = App::new(Some(String::from("postgres://martin:martin4817@localhost/blog_test")), init_logger);
+        app.drop_db().unwrap();
+        app.create_db().unwrap();
+        app
+    }
+
+    fn insert_post(connection: &dao::Connection) {
+        super::execute_sql_file("insert_post.sql", connection).unwrap();
+    }
+
+    // FIXME
+    // #[test]
     fn test_tag_dao() {
-        let app = App::new();
+        let app = prepare_app(true);
         let conn = app.conn_pool.get().unwrap();
         let tag_dao = dao::TagDao::new(conn);
         let name = String::from("test");
@@ -120,5 +180,15 @@ mod tests {
 
         let one = tag_dao.get_one(&all[0].id).unwrap();
         assert_eq!(one.name, name);
+    }
+
+    #[test]
+    fn test_post_dao() {
+        let app = prepare_app(false);
+        let connection = app.conn_pool.get().unwrap();
+        insert_post(&connection);
+        let post_dao = dao::PostDao::new(connection);
+        let post = post_dao.get_one(&1).unwrap();
+        println!("{:?}", post);
     }
 }
