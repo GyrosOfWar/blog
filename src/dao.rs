@@ -13,8 +13,7 @@ pub trait Dao<T, K>
     fn get_all(&self) -> Result<Vec<T>>;
     fn insert_or_update(&self, value: &T) -> Result<()>;
     fn get_one(&self, key: &K) -> Result<T>;
-    fn value_exists(&self, value: &T) -> Result<bool>;
-    fn key_exists(&self, key: &K) -> Result<bool>;
+    fn exists(&self, key: &K) -> Result<bool>;
 }
 
 pub struct TagDao {
@@ -48,30 +47,11 @@ impl Dao<Tag, i32> for TagDao {
     }
 
     fn get_all(&self) -> Result<Vec<Tag>> {
-        let mut tags = vec![];
-        for row in try!(self.conn.query("SELECT name, id FROM tags", &[])).iter() {
-            let tag = Tag {
-                name: row.get(0),
-                id: row.get(1),
-            };
-            tags.push(tag);
-        }
-
-        Ok(tags)
+        let query = try!(self.conn.query("SELECT name, id FROM tags", &[]));
+        Ok(query.iter().map(|row| Tag { name: row.get(0), id: row.get(1) }).collect())
     }
 
-    fn value_exists(&self, value: &Tag) -> Result<bool> {
-        let query = try!(self.conn.query("SELECT COUNT(*) FROM tags WHERE id = $1", &[&value.id]));
-        if query.is_empty() {
-            Err(Error::ExpectedResult)
-        } else {
-            let row = query.get(0);
-            let count: i64 = row.get(0);
-            Ok(count > 0)
-        }
-    }
-
-    fn key_exists(&self, key: &i32) -> Result<bool> {
+    fn exists(&self, key: &i32) -> Result<bool> {
         let query = try!(self.conn.query("SELECT COUNT(*) FROM tags WHERE id = $1", &[&key]));
         if query.is_empty() {
             Err(Error::ExpectedResult)
@@ -114,7 +94,19 @@ impl PostDao {
 
 impl Dao<Post, i32> for PostDao {
     fn get_all(&self) -> Result<Vec<Post>> {
-        unimplemented!()
+        let query = try!(self.conn.query("SELECT title, content, id FROM posts", &[]));
+        let mut posts = vec![];
+        for row in query.iter() {
+            let id = row.get(2);
+            let tags = try!(self.query_for_tags(id));
+            posts.push(Post {
+                title: row.get(0),
+                content: row.get(1),
+                id: id,
+                tags: tags
+            })
+        }
+        Ok(posts)
     }
 
     fn insert_or_update(&self, value: &Post) -> Result<()> {
@@ -128,25 +120,25 @@ impl Dao<Post, i32> for PostDao {
             Err(Error::ExpectedResult)
         } else {
             let row = query.get(0);
-            let title: String = row.get(0);
-            let content: String = row.get(1);
-            let id: i32 = row.get(2);
-            let tags = try!(self.query_for_tags(id));
+            let tags = try!(self.query_for_tags(*key));
 
             Ok(Post {
-                title: title,
-                content: content,
-                id: id,
+                title: row.get(0),
+                content: row.get(1),
+                id: row.get(2),
                 tags: tags,
             })
         }
     }
 
-    fn value_exists(&self, value: &Post) -> Result<bool> {
-        unimplemented!()
-    }
-
-    fn key_exists(&self, key: &i32) -> Result<bool> {
-        unimplemented!()
+    fn exists(&self, key: &i32) -> Result<bool> {
+        let query = try!(self.conn.query("SELECT COUNT(*) FROM posts WHERE id = $1", &[key]));
+        if query.is_empty() {
+            Err(Error::ExpectedResult)
+        } else {
+            let row = query.get(0);
+            let count: i64 = row.get(0);
+            Ok(count > 0)
+        }
     }
 }

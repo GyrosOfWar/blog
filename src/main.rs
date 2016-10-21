@@ -1,9 +1,9 @@
-#![recursion_limit = "1024"]
-
 #[macro_use]
 extern crate quick_error;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate lazy_static;
 extern crate env_logger;
 extern crate dotenv;
 extern crate time;
@@ -16,10 +16,14 @@ use std::env;
 use std::io::prelude::*;
 use std::fs::File;
 use std::path::Path;
+use std::time::Instant;
 
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
 
+use util::DurationExt;
+
 mod model;
+mod util;
 mod dao;
 
 mod errors {
@@ -73,10 +77,8 @@ fn configure_logger() {
     dotenv::dotenv().unwrap();
     let format = |record: &log::LogRecord| {
         let cur_time = time::now();
-        format!("{:02}:{:02}:{:02} [{}] {}: {}",
-                cur_time.tm_hour,
-                cur_time.tm_min,
-                cur_time.tm_sec,
+        format!("{} [{}] {}: {}",
+                cur_time.strftime("%Y-%m-%d %H:%M:%S:%f").unwrap(),
                 record.level(),
                 record.target(),
                 record.args())
@@ -94,6 +96,7 @@ pub struct App {
 
 impl App {
     pub fn new(db_string: Option<String>, init_logger: bool) -> App {
+        let start = Instant::now();
         if init_logger {
             configure_logger();
         }
@@ -104,6 +107,7 @@ impl App {
             .unwrap();
         let pool = r2d2::Pool::new(r2d2::Config::default(), manager).unwrap();
         info!("Set up connection pool");
+        info!("Initializing took {:?} ms", start.elapsed().millis());
         App {
             conn_pool: pool,
             config: config,
@@ -141,29 +145,32 @@ fn main() {
     let app = App::new(None, true);
 }
 
-// #[cfg(test)]
+#[cfg(test)]
 #[allow(dead_code, unused)]
 mod tests {
+    use std::sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT};
+
     use super::*;
     use super::dao::{self, Dao};
     use super::model::Tag;
 
-    fn prepare_app(init_logger: bool) -> App {
-        let app = App::new(Some(String::from("postgres://martin:martin4817@localhost/blog_test")), init_logger);
-        app.drop_db().unwrap();
-        app.create_db().unwrap();
-        app
+    lazy_static! {
+        static ref APP: App = {
+            let app = App::new(Some(String::from("postgres://martin:martin4817@localhost/blog_test")), true);
+            app.drop_db().unwrap();
+            app.create_db().unwrap();
+            app
+        };
     }
 
     fn insert_post(connection: &dao::Connection) {
         super::execute_sql_file("insert_post.sql", connection).unwrap();
     }
+    // TODO synchronize access to the database to fix intermittent test failures
 
-    // FIXME
-    // #[test]
+    #[test]
     fn test_tag_dao() {
-        let app = prepare_app(true);
-        let conn = app.conn_pool.get().unwrap();
+        let conn = APP.conn_pool.get().unwrap();
         let tag_dao = dao::TagDao::new(conn);
         let name = String::from("test");
         let tag = Tag {
@@ -175,8 +182,7 @@ mod tests {
         let all = tag_dao.get_all().unwrap();
         assert_eq!(all[0].name, name);
 
-        assert!(tag_dao.value_exists(&all[0]).unwrap());
-        assert!(tag_dao.key_exists(&all[0].id).unwrap());
+        assert!(tag_dao.exists(&all[0].id).unwrap());
 
         let one = tag_dao.get_one(&all[0].id).unwrap();
         assert_eq!(one.name, name);
@@ -184,11 +190,16 @@ mod tests {
 
     #[test]
     fn test_post_dao() {
-        let app = prepare_app(false);
-        let connection = app.conn_pool.get().unwrap();
+        let connection = APP.conn_pool.get().unwrap();
         insert_post(&connection);
         let post_dao = dao::PostDao::new(connection);
         let post = post_dao.get_one(&1).unwrap();
-        println!("{:?}", post);
+        assert_eq!(post.id, 1);
+        assert_eq!(post.content, String::from("This is the content of the test blog post"));
+        assert_eq!(post.title, String::from("A test blog post"));
+        assert!(post.tags.len() == 3);
+
+        let all_posts = post_dao.get_all().unwrap();
+        assert_eq!(all_posts.len(), 2);
     }
 }
