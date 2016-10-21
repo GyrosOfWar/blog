@@ -123,12 +123,12 @@ impl PostDao {
     pub fn get_posts_for_user(&self, id: i32) -> Result<Vec<Post>> {
         let mut posts = vec![];
         let sql = "
-        SELECT posts.id, posts.title, posts.content, tags.name, tags.id
+        SELECT posts.id, posts.title, posts.content, posts.created_on, tags.name, tags.id
         FROM users
             INNER JOIN users_posts ON users.id = users_posts.user_id
             INNER JOIN posts ON users_posts.post_id = posts.id
-            INNER JOIN posts_tags ON posts.id = posts_tags.post_id
-            INNER JOIN tags ON posts_tags.tag_id = tags.id
+            FULL OUTER JOIN posts_tags ON posts.id = posts_tags.post_id
+            FULL OUTER JOIN tags ON posts_tags.tag_id = tags.id
         WHERE users.id = $1";
         let query = try!(self.conn.query(sql, &[&id]));
         let iter = query.iter();
@@ -138,24 +138,25 @@ impl PostDao {
                 id: first.get(0),
                 title: first.get(1),
                 content: first.get(2),
-                tags: vec![]
+                tags: vec![],
+                created_on: first.get(3)
             };
             for row in group {
                 post.tags.push(Tag {
-                    name: row.get(3),
-                    id: row.get(4)
+                    name: row.get(5),
+                    id: row.get(6)
                 })
             }
+            info!("{:?}", post);
             posts.push(post);
         }
-        
         Ok(posts)
     }
 }
 
 impl Dao<Post, i32> for PostDao {
     fn get_all(&self) -> Result<Vec<Post>> {
-        let query = try!(self.conn.query("SELECT title, content, id FROM posts", &[]));
+        let query = try!(self.conn.query("SELECT title, content, id, created_on FROM posts", &[]));
         let mut posts = vec![];
         for row in query.iter() {
             let id = row.get(2);
@@ -165,6 +166,7 @@ impl Dao<Post, i32> for PostDao {
                 content: row.get(1),
                 id: id,
                 tags: tags,
+                created_on: row.get(3)
             })
         }
         Ok(posts)
@@ -193,7 +195,7 @@ impl Dao<Post, i32> for PostDao {
     }
 
     fn get_one(&self, key: &i32) -> Result<Post> {
-        let query = try!(self.conn.query("SELECT title, content, id FROM posts WHERE id = $1",
+        let query = try!(self.conn.query("SELECT title, content, id, created_on FROM posts WHERE id = $1",
                                          &[&key]));
         if query.is_empty() {
             Err(Error::ExpectedResult)
@@ -206,6 +208,7 @@ impl Dao<Post, i32> for PostDao {
                 content: row.get(1),
                 id: row.get(2),
                 tags: tags,
+                created_on: row.get(3)
             })
         }
     }

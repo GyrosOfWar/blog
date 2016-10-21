@@ -14,11 +14,9 @@ extern crate r2d2;
 extern crate r2d2_postgres;
 
 extern crate itertools;
+extern crate chrono;
 extern crate pencil;
 
-use std::env;
-use std::io::prelude::*;
-use std::fs::File;
 use std::path::Path;
 use std::time::Instant;
 
@@ -177,10 +175,15 @@ mod tests {
         assert!(post.tags.len() == 3);
 
         let all_posts = post_dao.get_all().unwrap();
-        assert_eq!(all_posts.len(), 2);
+        assert_eq!(all_posts.len(), 3);
 
-        let p = post_dao.get_posts_for_user(1).unwrap();
-        println!("{:#?}", p);
-        assert_eq!(1, 0);
+        let user_1_posts = post_dao.get_posts_for_user(1).unwrap();
+        assert_eq!(user_1_posts.len(), 2);
+        assert_eq!(user_1_posts[0].tags.len(), 2);
+        assert_eq!(user_1_posts[1].tags.len(), 3);
+
+        let user_2_posts = post_dao.get_posts_for_user(2).unwrap();
+        assert_eq!(user_2_posts.len(), 1);
+        assert_eq!(user_2_posts[0].tags.len(), 2);
     }
 }

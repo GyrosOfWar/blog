@@ -1,3 +1,6 @@
+use chrono::DateTime;
+use chrono::UTC;
+
 #[derive(Debug, Clone)]
 pub struct Tag {
     pub name: String,
@@ -10,6 +13,7 @@ pub struct Post {
     pub content: String,
     pub tags: Vec<Tag>,
     pub id: i32,
+    pub created_on: DateTime<UTC>,
 }
 
 #[derive(Debug, Clone)]
