@@ -1,4 +1,10 @@
 use std::time::Duration;
+use std::path::Path;
+use std::fs::File;
+use std::io::Read;
+
+use errors::Result;
+use dao::Connection;
 
 /// Provides some additional conversions for Duration types.
 pub trait DurationExt {
@@ -36,4 +42,20 @@ impl DurationExt for Duration {
             Duration::new(0, nanos as u32)
         }
     }
+}
+
+pub fn execute_sql_file<P>(path: P, connection: &Connection) -> Result<()> 
+    where P: AsRef<Path>
+{
+    let mut file = try!(File::open(&path));
+    let mut text = String::new();
+    try!(file.read_to_string(&mut text));
+    info!("Executing SQL script {}", path.as_ref().display());
+    for statement in text.split(';') {
+        let statement = statement.trim();
+        debug!("Executing statement {}", statement);
+        try!(connection.execute(statement, &[]));
+    }
+    info!("Finished executing SQL!");
+    Ok(())
 }

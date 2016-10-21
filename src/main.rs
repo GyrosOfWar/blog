@@ -7,10 +7,13 @@ extern crate lazy_static;
 extern crate env_logger;
 extern crate dotenv;
 extern crate time;
+extern crate toml;
 
 extern crate postgres;
 extern crate r2d2;
 extern crate r2d2_postgres;
+
+extern crate pencil;
 
 use std::env;
 use std::io::prelude::*;
@@ -19,12 +22,17 @@ use std::path::Path;
 use std::time::Instant;
 
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
+use pencil::Pencil;
+use pencil::{Request, PencilResult, Response};
+use pencil::method::Get;
 
 use util::DurationExt;
+use config::Config;
 
 mod model;
 mod util;
 mod dao;
+mod config;
 
 mod errors {
     use postgres;
@@ -62,17 +70,6 @@ mod errors {
     pub type Result<T> = ::std::result::Result<T, Error>;
 }
 
-pub struct Config {
-    db_string: String,
-}
-
-impl Config {
-    pub fn new(db_string: Option<String>) -> Config {
-        // TODO
-        Config { db_string: db_string.unwrap_or(String::from("postgres://martin:martin4817@localhost/blog")) }
-    }
-}
-
 fn configure_logger() {
     dotenv::dotenv().unwrap();
     let format = |record: &log::LogRecord| {
@@ -89,9 +86,14 @@ fn configure_logger() {
     builder.init().unwrap();
 }
 
+fn hello(_: &mut Request) -> PencilResult {
+    Ok(Response::from("Hello world!"))
+}
+
 pub struct App {
     pub conn_pool: r2d2::Pool<PostgresConnectionManager>,
     pub config: Config,
+    pub pencil: Pencil
 }
 
 impl App {
@@ -107,11 +109,20 @@ impl App {
             .unwrap();
         let pool = r2d2::Pool::new(r2d2::Config::default(), manager).unwrap();
         info!("Set up connection pool");
+
+        let mut pencil = Pencil::new("/");
+        pencil.route("/", &[Get], "hello", hello);
+
         info!("Initializing took {:?} ms", start.elapsed().millis());
         App {
             conn_pool: pool,
             config: config,
+            pencil: pencil
         }
+    }
+
+    pub fn run(self) {
+        self.pencil.run((self.config.host.as_str(), self.config.port))
     }
 
     pub fn drop_db(&self) -> errors::Result<()> {
@@ -143,13 +154,11 @@ fn execute_sql_file<P>(path: P, connection: &dao::Connection) -> errors::Result<
 
 fn main() {
     let app = App::new(None, true);
+    app.run();
 }
 
 #[cfg(test)]
-#[allow(dead_code, unused)]
 mod tests {
-    use std::sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT};
-
     use super::*;
     use super::dao::{self, Dao};
     use super::model::Tag;

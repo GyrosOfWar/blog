@@ -1,0 +1,6 @@
+[database]
+url = "postgres://martin:martin4817@localhost/blog"
+
+[web]
+host = "localhost"
+port = 5000
