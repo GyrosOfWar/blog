@@ -52,6 +52,9 @@ pub fn execute_sql_file<P>(path: P, connection: &Connection) -> Result<()>
     try!(file.read_to_string(&mut text));
     info!("Executing SQL script {}", path.as_ref().display());
     for statement in text.split(';') {
+        if statement.len() == 0 {
+            continue;
+        }
         let statement = statement.trim();
         debug!("Executing statement {}", statement);
         try!(connection.execute(statement, &[]));

@@ -1,9 +1,12 @@
+use std::sync::Arc;
+
 use r2d2;
 use r2d2_postgres;
 use postgres::types::ToSql;
-use errors::*;
+use itertools::Itertools;
 
-use model::{Tag, Post};
+use errors::*;
+use model::{Tag, Post, User};
 
 pub type Connection = r2d2::PooledConnection<r2d2_postgres::PostgresConnectionManager>;
 
@@ -11,25 +14,44 @@ pub trait Dao<T, K>
     where K: Eq + ToSql
 {
     fn get_all(&self) -> Result<Vec<T>>;
-    fn insert_or_update(&self, value: &T) -> Result<()>;
+    fn insert(&self, value: &T) -> Result<K>;
+    fn update(&self, value: &T) -> Result<()>;
     fn get_one(&self, key: &K) -> Result<T>;
     fn exists(&self, key: &K) -> Result<bool>;
+
+    fn insert_many<'a, I>(&self, values: I) -> Result<Vec<K>>
+        where I: Iterator<Item = &'a T>,
+              T: 'a
+    {
+        let mut keys = vec![];
+        for value in values {
+            keys.push(try!(self.insert(value)));
+        }
+        Ok(keys)
+    }
 }
 
 pub struct TagDao {
-    conn: Connection,
+    conn: Arc<Connection>,
 }
 
 impl TagDao {
-    pub fn new(conn: Connection) -> TagDao {
+    pub fn new(conn: Arc<Connection>) -> TagDao {
         TagDao { conn: conn }
     }
 }
 
 impl Dao<Tag, i32> for TagDao {
-    fn insert_or_update(&self, value: &Tag) -> Result<()> {
-        try!(self.conn.execute("INSERT INTO tags (name) VALUES ($1) ON CONFLICT DO NOTHING",
-                               &[&value.name]));
+    fn insert(&self, value: &Tag) -> Result<i32> {
+        let query = try!(self.conn.query("INSERT INTO tags (name) VALUES ($1) RETURNING id",
+                                         &[&value.name]));
+        let row = query.get(0);
+        Ok(row.get(0))
+    }
+
+    fn update(&self, value: &Tag) -> Result<()> {
+        try!(self.conn.execute("UPDATE tags SET name = $1 WHERE id = $2",
+                               &[&value.name, &value.id]));
         Ok(())
     }
 
@@ -48,7 +70,14 @@ impl Dao<Tag, i32> for TagDao {
 
     fn get_all(&self) -> Result<Vec<Tag>> {
         let query = try!(self.conn.query("SELECT name, id FROM tags", &[]));
-        Ok(query.iter().map(|row| Tag { name: row.get(0), id: row.get(1) }).collect())
+        Ok(query.iter()
+            .map(|row| {
+                Tag {
+                    name: row.get(0),
+                    id: row.get(1),
+                }
+            })
+            .collect())
     }
 
     fn exists(&self, key: &i32) -> Result<bool> {
@@ -64,11 +93,11 @@ impl Dao<Tag, i32> for TagDao {
 }
 
 pub struct PostDao {
-    conn: Connection,
+    conn: Arc<Connection>,
 }
 
 impl PostDao {
-    pub fn new(conn: Connection) -> PostDao {
+    pub fn new(conn: Arc<Connection>) -> PostDao {
         PostDao { conn: conn }
     }
 
@@ -90,6 +119,38 @@ impl PostDao {
                 .collect())
         }
     }
+
+    pub fn get_posts_for_user(&self, id: i32) -> Result<Vec<Post>> {
+        let mut posts = vec![];
+        let sql = "
+        SELECT posts.id, posts.title, posts.content, tags.name, tags.id
+        FROM users
+            INNER JOIN users_posts ON users.id = users_posts.user_id
+            INNER JOIN posts ON users_posts.post_id = posts.id
+            INNER JOIN posts_tags ON posts.id = posts_tags.post_id
+            INNER JOIN tags ON posts_tags.tag_id = tags.id
+        WHERE users.id = $1";
+        let query = try!(self.conn.query(sql, &[&id]));
+        let iter = query.iter();
+        for (post_id, mut group) in &iter.group_by(|row| row.get::<usize, i32>(0)) {
+            let first = group.nth(0).unwrap();
+            let mut post = Post {
+                id: first.get(0),
+                title: first.get(1),
+                content: first.get(2),
+                tags: vec![]
+            };
+            for row in group {
+                post.tags.push(Tag {
+                    name: row.get(3),
+                    id: row.get(4)
+                })
+            }
+            posts.push(post);
+        }
+        
+        Ok(posts)
+    }
 }
 
 impl Dao<Post, i32> for PostDao {
@@ -103,14 +164,32 @@ impl Dao<Post, i32> for PostDao {
                 title: row.get(0),
                 content: row.get(1),
                 id: id,
-                tags: tags
+                tags: tags,
             })
         }
         Ok(posts)
     }
 
-    fn insert_or_update(&self, value: &Post) -> Result<()> {
-        unimplemented!()
+    fn insert(&self, value: &Post) -> Result<i32> {
+        let query = try!(self.conn
+            .query("INSERT INTO posts (title, content) VALUES ($1, $2) RETURNING id",
+                   &[&value.title, &value.content]));
+        let row = query.get(0);
+        let post_id: i32 = row.get(0);
+        let tag_dao = TagDao::new(self.conn.clone());
+        try!(tag_dao.insert_many(value.tags.iter()));
+
+        Ok(post_id)
+    }
+
+    fn update(&self, value: &Post) -> Result<()> {
+        try!(self.conn.execute("UPDATE posts SET content = $1, title = $2 WHERE id = $3",
+                               &[&value.content, &value.title, &value.id]));
+        let tag_dao = TagDao::new(self.conn.clone());
+        for tag in &value.tags {
+            try!(tag_dao.update(&tag));
+        }
+        Ok(())
     }
 
     fn get_one(&self, key: &i32) -> Result<Post> {
@@ -140,5 +219,44 @@ impl Dao<Post, i32> for PostDao {
             let count: i64 = row.get(0);
             Ok(count > 0)
         }
+    }
+}
+
+pub struct UserDao {
+    conn: Arc<Connection>,
+}
+
+impl Dao<User, i32> for UserDao {
+    fn get_all(&self) -> Result<Vec<User>> {
+        let query = try!(self.conn.query("SELECT name, pw_hash, id FROM users", &[]));
+        let mut users = vec![];
+        let post_dao = PostDao::new(self.conn.clone());
+        for row in query.iter() {
+            let id = row.get(2);
+            let posts = try!(post_dao.get_posts_for_user(id));
+            users.push(User {
+                name: row.get(0),
+                pw_hash: row.get(1),
+                id: id,
+                posts: posts,
+            });
+        }
+        Ok(users)
+    }
+
+    fn insert(&self, value: &User) -> Result<i32> {
+        unimplemented!()
+    }
+
+    fn update(&self, value: &User) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn get_one(&self, key: &i32) -> Result<User> {
+        unimplemented!()
+    }
+
+    fn exists(&self, key: &i32) -> Result<bool> {
+        unimplemented!()
     }
 }

@@ -12,7 +12,7 @@ INSERT INTO posts (title, content) VALUES
   ('A test blog post', 'This is the content of the test blog post'),
   ('Another test blog post!', 'Some more #content #value');
 
-INSERT INTO tags (name) VALUES ('content'), ('test'), ('testing'), ('stuff') ON CONFLICT DO NOTHING ;
+INSERT INTO tags (name) VALUES ('content'), ('test'), ('testing'), ('stuff') ON CONFLICT DO NOTHING;
 
 INSERT INTO posts_tags (post_id, tag_id) VALUES (1, 1), (1, 2), (1, 3),
   (2, 3), (2, 4);
