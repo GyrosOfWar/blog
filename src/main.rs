@@ -71,16 +71,15 @@ mod errors {
 pub struct App {
     pub conn_pool: r2d2::Pool<PostgresConnectionManager>,
     pub config: Config,
-    pub pencil: Pencil
+    pub pencil: Pencil,
 }
 
 impl App {
-
     fn hello(_: &mut Request) -> PencilResult {
         Ok(Response::from("Hello world!"))
     }
 
-    pub fn new<P>(config_file: Option<P>) -> App 
+    pub fn new<P>(config_file: Option<P>) -> App
         where P: AsRef<Path>
     {
         let start = Instant::now();
@@ -97,7 +96,7 @@ impl App {
         App {
             conn_pool: pool,
             config: config,
-            pencil: pencil
+            pencil: pencil,
         }
     }
 
@@ -126,9 +125,11 @@ fn main() {
 mod tests {
     use std::sync::Arc;
 
+    use chrono::DateTime;
+
     use super::*;
     use super::dao::{self, Dao};
-    use super::model::Tag;
+    use super::model::{Tag, User, Post};
 
     lazy_static! {
         static ref APP: App = {
@@ -139,51 +140,76 @@ mod tests {
         };
     }
 
-    fn insert_post(connection: &dao::Connection) {
-        super::util::execute_sql_file("insert_post.sql", connection).unwrap();
-    }
-
-    #[test]
-    fn test_tag_dao() {
-        let conn = Arc::new(APP.conn_pool.get().unwrap());
-        let tag_dao = dao::TagDao::new(conn);
-        let name = String::from("test");
-        let tag = Tag {
-            name: name.clone(),
-            id: 1,
-        };
-        tag_dao.insert(&tag).unwrap();
-
-        let all = tag_dao.get_all().unwrap();
-        assert_eq!(all[0].name, name);
-
-        assert!(tag_dao.exists(&all[0].id).unwrap());
-
-        let one = tag_dao.get_one(&all[0].id).unwrap();
-        assert_eq!(one.name, name);
-    }
-
     #[test]
     fn test_post_dao() {
-        let connection = Arc::new(APP.conn_pool.get().unwrap());
-        insert_post(&connection);
-        let post_dao = dao::PostDao::new(connection);
-        let post = post_dao.get_one(&1).unwrap();
-        assert_eq!(post.id, 1);
-        assert_eq!(post.content, String::from("This is the content of the test blog post"));
-        assert_eq!(post.title, String::from("A test blog post"));
-        assert!(post.tags.len() == 3);
+        let tags = vec![
+            Tag {
+                name: String::from("test"),
+                id: 0
+            },
+            Tag {
+                 name: String::from("work"),
+                 id: 0
+            },
+            Tag {
+                name: String::from("other tag"),
+                id: 0
+            } 
+        ];
 
-        let all_posts = post_dao.get_all().unwrap();
-        assert_eq!(all_posts.len(), 3);
+        let posts = vec![
+            Post::new(0, "Post 1".into(), "Content 1".into(), DateTime::new(), 1, vec![tags[0], tags[1]]),
+        ];
 
-        let user_1_posts = post_dao.get_posts_for_user(1).unwrap();
-        assert_eq!(user_1_posts.len(), 2);
-        assert_eq!(user_1_posts[0].tags.len(), 2);
-        assert_eq!(user_1_posts[1].tags.len(), 3);
-
-        let user_2_posts = post_dao.get_posts_for_user(2).unwrap();
-        assert_eq!(user_2_posts.len(), 1);
-        assert_eq!(user_2_posts[0].tags.len(), 2);
+        let user = User {
+            name: String::from("martin"),
+            pw_hash: String::from("test"),
+            posts: posts,
+            id: 0,
+        };
     }
+
+    // #[test]
+    // fn test_tag_dao() {
+    //     let conn = Arc::new(APP.conn_pool.get().unwrap());
+    //     let tag_dao = dao::TagDao::new(conn);
+    //     let name = String::from("test");
+    //     let tag = Tag {
+    //         name: name.clone(),
+    //         id: 1,
+    //     };
+    //     tag_dao.insert(&tag).unwrap();
+
+    //     let all = tag_dao.get_all().unwrap();
+    //     assert_eq!(all[0].name, name);
+
+    //     assert!(tag_dao.exists(&all[0].id).unwrap());
+
+    //     let one = tag_dao.get_one(&all[0].id).unwrap();
+    //     assert_eq!(one.name, name);
+    // }
+
+    // #[test]
+    // fn test_post_dao() {
+    //     let connection = Arc::new(APP.conn_pool.get().unwrap());
+
+    //     let post_dao = dao::PostDao::new(connection);
+    //     let post = post_dao.get_one(&1).unwrap();
+    //     assert_eq!(post.id, 1);
+    //     assert_eq!(post.content, String::from("This is the content of the test blog post"));
+    //     assert_eq!(post.title, String::from("A test blog post"));
+    //     assert!(post.tags.len() == 3);
+
+    //     let all_posts = post_dao.get_all().unwrap();
+    //     assert_eq!(all_posts.len(), 3);
+
+    //     let user_1_posts = post_dao.get_posts_for_user(1).unwrap();
+    //     assert_eq!(user_1_posts.len(), 2);
+    //     assert_eq!(user_1_posts[0].tags.len(), 2);
+    //     assert_eq!(user_1_posts[1].tags.len(), 3);
+
+    //     let user_2_posts = post_dao.get_posts_for_user(2).unwrap();
+    //     assert_eq!(user_2_posts.len(), 1);
+    //     assert_eq!(user_2_posts[0].tags.len(), 2);
+    // }
 }
