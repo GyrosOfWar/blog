@@ -10,24 +10,31 @@ use model::{Tag, Post, User};
 
 pub type Connection = r2d2::PooledConnection<r2d2_postgres::PostgresConnectionManager>;
 
+pub trait HasKey<K>
+    where K: ToSql + Eq
+{
+    fn get_key(&self) -> K;
+    fn set_key(&mut self, new_key: K);
+}
+
 pub trait Dao<T, K>
-    where K: Eq + ToSql
+    where T: HasKey<K>,
+          K: Eq + ToSql
 {
     fn get_all(&self) -> Result<Vec<T>>;
-    fn insert(&self, value: &T) -> Result<K>;
+    fn insert(&self, value: &mut T) -> Result<()>;
     fn update(&self, value: &T) -> Result<()>;
     fn get_one(&self, key: &K) -> Result<T>;
     fn exists(&self, key: &K) -> Result<bool>;
 
-    fn insert_many<'a, I>(&self, values: I) -> Result<Vec<K>>
-        where I: Iterator<Item = &'a T>,
+    fn insert_many<'a, I>(&self, values: I) -> Result<()>
+        where I: Iterator<Item = &'a mut T>,
               T: 'a
     {
-        let mut keys = vec![];
         for value in values {
-            keys.push(try!(self.insert(value)));
+            try!(self.insert(value));
         }
-        Ok(keys)
+        Ok(())
     }
 }
 
@@ -42,11 +49,15 @@ impl TagDao {
 }
 
 impl Dao<Tag, i32> for TagDao {
-    fn insert(&self, value: &Tag) -> Result<i32> {
-        let query = try!(self.conn.query("INSERT INTO tags (name) VALUES ($1) RETURNING id",
-                                         &[&value.name]));
+    fn insert(&self, value: &mut Tag) -> Result<()> {
+        let query = try!(self.conn
+            .query("INSERT INTO tags (name) VALUES ($1) ON CONFLICT ON CONSTRAINT tags_name_key \
+                    DO UPDATE SET name=tags.name RETURNING id",
+                   &[&value.name]));
         let row = query.get(0);
-        Ok(row.get(0))
+        let key: i32 = row.get(0);
+        value.set_key(key);
+        Ok(())
     }
 
     fn update(&self, value: &Tag) -> Result<()> {
@@ -134,11 +145,16 @@ impl PostDao {
         let iter = query.iter();
         for (post_id, mut group) in &iter.group_by(|row| row.get::<usize, i32>(0)) {
             let first = group.nth(0).unwrap();
-            let mut post = Post::new(first.get(0), first.get(1), first.get(2), first.get(3), user_id, vec![]);
+            let mut post = Post::new(first.get(0),
+                                     first.get(1),
+                                     first.get(2),
+                                     first.get(3),
+                                     user_id,
+                                     vec![]);
             for row in group {
                 post.tags.push(Tag {
                     name: row.get(4),
-                    id: row.get(5)
+                    id: row.get(5),
                 })
             }
             info!("{:?}", post);
@@ -150,7 +166,9 @@ impl PostDao {
 
 impl Dao<Post, i32> for PostDao {
     fn get_all(&self) -> Result<Vec<Post>> {
-        let query = try!(self.conn.query("SELECT title, content, id, created_on, owner_id FROM posts", &[]));
+        let query = try!(self.conn
+            .query("SELECT title, content, id, created_on, owner_id FROM posts",
+                   &[]));
         let mut posts = vec![];
         for row in query.iter() {
             let id = row.get(2);
@@ -160,16 +178,16 @@ impl Dao<Post, i32> for PostDao {
         Ok(posts)
     }
 
-    fn insert(&self, value: &Post) -> Result<i32> {
+    fn insert(&self, value: &mut Post) -> Result<()> {
         let query = try!(self.conn
             .query("INSERT INTO posts (title, content) VALUES ($1, $2) RETURNING id",
                    &[&value.title, &value.content]));
         let row = query.get(0);
         let post_id: i32 = row.get(0);
         let tag_dao = TagDao::new(self.conn.clone());
-        try!(tag_dao.insert_many(value.tags.iter()));
+        try!(tag_dao.insert_many(value.tags.iter_mut()));
 
-        Ok(post_id)
+        Ok(())
     }
 
     fn update(&self, value: &Post) -> Result<()> {
@@ -183,14 +201,20 @@ impl Dao<Post, i32> for PostDao {
     }
 
     fn get_one(&self, key: &i32) -> Result<Post> {
-        let query = try!(self.conn.query("SELECT title, content, id, created_on, owner_id FROM posts WHERE id = $1",
-                                         &[&key]));
+        let query = try!(self.conn
+            .query("SELECT title, content, id, created_on, owner_id FROM posts WHERE id = $1",
+                   &[&key]));
         if query.is_empty() {
             Err(Error::ExpectedResult)
         } else {
             let row = query.get(0);
             let tags = try!(self.query_for_tags(*key));
-            Ok(Post::new(row.get(2), row.get(0), row.get(1), row.get(3), row.get(4), tags))
+            Ok(Post::new(row.get(2),
+                         row.get(0),
+                         row.get(1),
+                         row.get(3),
+                         row.get(4),
+                         tags))
         }
     }
 
@@ -208,6 +232,12 @@ impl Dao<Post, i32> for PostDao {
 
 pub struct UserDao {
     conn: Arc<Connection>,
+}
+
+impl UserDao {
+    pub fn new(conn: Arc<Connection>) -> UserDao {
+        UserDao { conn: conn }
+    }
 }
 
 impl Dao<User, i32> for UserDao {
@@ -228,16 +258,19 @@ impl Dao<User, i32> for UserDao {
         Ok(users)
     }
 
-    fn insert(&self, value: &User) -> Result<i32> {
-        let insert = try!(self.conn.query("INSERT INTO users (name, pw_hash) VALUES ($1, $2)", &[&value.name, &value.pw_hash]));
+    fn insert(&self, value: &mut User) -> Result<()> {
+        let insert = try!(self.conn
+            .query("INSERT INTO users (name, pw_hash) VALUES ($1, $2) RETURNING id",
+                   &[&value.name, &value.pw_hash]));
         let row = insert.get(0);
-        let user_id = row.get(0);
+        let user_id: i32 = row.get(0);
+        value.set_key(user_id);
         let post_dao = PostDao::new(self.conn.clone());
-        for post in &value.posts {
+        for post in &mut value.posts {
             try!(post_dao.insert(post));
         }
 
-        Ok(user_id)
+        Ok(())
     }
 
     fn update(&self, value: &User) -> Result<()> {

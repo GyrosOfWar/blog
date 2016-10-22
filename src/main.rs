@@ -125,7 +125,7 @@ fn main() {
 mod tests {
     use std::sync::Arc;
 
-    use chrono::DateTime;
+    use chrono::{UTC, DateTime};
 
     use super::*;
     use super::dao::{self, Dao};
@@ -141,32 +141,50 @@ mod tests {
     }
 
     #[test]
-    fn test_post_dao() {
-        let tags = vec![
-            Tag {
-                name: String::from("test"),
-                id: 0
-            },
-            Tag {
-                 name: String::from("work"),
-                 id: 0
-            },
-            Tag {
-                name: String::from("other tag"),
-                id: 0
-            } 
-        ];
+    fn test_inserts() {
+        let tags = vec![Tag {
+                            name: String::from("test"),
+                            id: 0,
+                        },
+                        Tag {
+                            name: String::from("work"),
+                            id: 0,
+                        },
+                        Tag {
+                            name: String::from("other tag"),
+                            id: 0,
+                        }];
 
         let posts = vec![
-            Post::new(0, "Post 1".into(), "Content 1".into(), DateTime::new(), 1, vec![tags[0], tags[1]]),
+            Post::new(0, "Post 1".into(), "Content 1".into(), 
+                      UTC::now(), 1, vec![tags[0].clone(), tags[1].clone() ]),
+            Post::new(0, "Post 2".into(), "Content 2".into(),
+                      UTC::now(), 1, vec![tags[1].clone(), tags[2].clone()]),
+            Post::new(0, "Post 3".into(), "Content 3".into(),
+                      UTC::now(), 2, vec![tags[0].clone(), tags[2].clone()]),
         ];
 
-        let user = User {
+        let mut user1 = User {
             name: String::from("martin"),
             pw_hash: String::from("test"),
-            posts: posts,
+            posts: vec![posts[0].clone(), posts[1].clone()],
             id: 0,
         };
+
+        let mut user2 = User {
+            name: "user2".into(),
+            pw_hash: "test".into(),
+            posts: vec![posts[2].clone()],
+            id: 0,
+        };
+
+        let conn = Arc::new(APP.conn_pool.get().unwrap());
+        let user_dao = dao::UserDao::new(conn);
+        user_dao.insert(&mut user1).unwrap();
+        user_dao.insert(&mut user2).unwrap();
+
+        assert_eq!(user1.id, 1);
+        assert_eq!(user2.id, 2);
     }
 
     // #[test]
