@@ -14,7 +14,9 @@ dotenv = "0.8"
 time = "0.1"
 lazy_static = "0.2"
 toml = "0.2"
-pencil = "0.3.0"
-rustc-serialize = "0.3"
+pencil = { git = "https://github.com/GyrosOfWar/pencil" }
 itertools = "0.5"
-chrono = "0.2"
+chrono = { version = "0.2", features = ["serde"] }
+serde = "0.8"
+serde_json = "0.8"
+serde_derive = "0.8"

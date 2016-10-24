@@ -44,7 +44,7 @@ impl DurationExt for Duration {
     }
 }
 
-pub fn execute_sql_file<P>(path: P, connection: &Connection) -> Result<()> 
+pub fn execute_sql_file<P>(path: P, connection: &Connection) -> Result<()>
     where P: AsRef<Path>
 {
     let mut file = try!(File::open(&path));

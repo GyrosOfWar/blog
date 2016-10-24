@@ -3,7 +3,8 @@ use std::env;
 use std::fs::File;
 use std::path::Path;
 
-use rustc_serialize::json::Json;
+use serde_json;
+use serde_json::Value;
 
 use dotenv;
 use log;
@@ -32,12 +33,22 @@ fn configure_logger() {
 pub struct Config {
     pub db_string: String,
     pub host: String,
-    pub port: u16
+    pub port: u16,
+}
+
+fn find_string(path: &str, value: &Value) -> String {
+    let ptr = value.pointer(path);
+    ptr.unwrap().as_str().unwrap().into()
+}
+
+fn find_u64(path: &str, value: &Value) -> u64 {
+    let ptr = value.pointer(path);
+    ptr.unwrap().as_u64().unwrap()
 }
 
 impl Config {
     // TODO eliminate .unwrap()
-    pub fn new<P>(config_file: Option<P>) -> Config 
+    pub fn new<P>(config_file: Option<P>) -> Config
         where P: AsRef<Path>
     {
         if !LOGGER_INITIALIZED.load(Ordering::SeqCst) {
@@ -45,14 +56,13 @@ impl Config {
         }
         let mut file = match config_file { 
             Some(p) => File::open(p).unwrap(),
-            None => File::open("config.json").unwrap()
+            None => File::open("config.json").unwrap(),
         };
-        let json = Json::from_reader(&mut file).unwrap();
-
+        let json = serde_json::from_reader(&mut file).unwrap();
         Config {
-            db_string: json.find_path(&["database", "url"]).unwrap().as_string().unwrap().into(),
-            host: json.find_path(&["web", "host"]).unwrap().as_string().unwrap().into(),
-            port: json.find_path(&["web", "port"]).unwrap().as_u64().unwrap() as u16
+            db_string: find_string("/database/url", &json),
+            host: find_string("/web/host", &json),
+            port: find_u64("/web/port", &json) as u16,
         }
     }
 }

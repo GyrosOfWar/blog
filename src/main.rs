@@ -1,13 +1,17 @@
+#![feature(proc_macro)]
+
+#[macro_use]
+extern crate serde_derive;
 #[macro_use]
 extern crate quick_error;
 #[macro_use]
 extern crate log;
 #[macro_use]
 extern crate lazy_static;
+
 extern crate env_logger;
 extern crate dotenv;
 extern crate time;
-extern crate rustc_serialize;
 
 extern crate postgres;
 extern crate r2d2;
@@ -16,9 +20,12 @@ extern crate r2d2_postgres;
 extern crate itertools;
 extern crate chrono;
 extern crate pencil;
+extern crate serde;
+extern crate serde_json;
 
 use std::path::Path;
 use std::time::Instant;
+use std::sync::Arc;
 
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
 use pencil::Pencil;
@@ -27,6 +34,7 @@ use pencil::method::Get;
 
 use util::DurationExt;
 use config::Config;
+use dao::{Dao, PostDao};
 
 mod model;
 mod util;
@@ -37,7 +45,10 @@ mod errors {
     use postgres;
     use r2d2;
     use std::io;
+    use pencil;
+    use std::error::Error as StdError;
 
+    // TODO impl Serialze, Deserialize for Error
     quick_error! {
         #[derive(Debug)]
         pub enum Error {
@@ -62,12 +73,27 @@ mod errors {
             ExpectedResult {
                 description("Expected a result, got none")
             }
-
         }
+    }
+
+    pub fn to_pencil_error<E>(err: E) -> pencil::PencilError
+        where E: StdError
+    {
+        pencil::PencilError::PenUserError(pencil::UserError { desc: err.description().into() })
     }
 
     pub type Result<T> = ::std::result::Result<T, Error>;
 }
+
+lazy_static! {
+    static ref APP: App = {
+        let app = App::new(Some("config.json"));
+        app.drop_db().unwrap();
+        app.create_db().unwrap();
+        app
+    };
+}
+
 pub struct App {
     pub conn_pool: r2d2::Pool<PostgresConnectionManager>,
     pub config: Config,
@@ -77,6 +103,19 @@ pub struct App {
 impl App {
     fn hello(_: &mut Request) -> PencilResult {
         Ok(Response::from("Hello world!"))
+    }
+
+    fn get_post(request: &mut Request) -> PencilResult {
+        let conn = Arc::new(try!(APP.conn_pool.get().map_err(|e| errors::to_pencil_error(e))));
+        let dao = PostDao::new(conn);
+        let id = try!(request.view_args
+            .get("id")
+            .unwrap()
+            .parse::<i32>()
+            .map_err(|e| errors::to_pencil_error(e)));
+        let post = dao.get_one(&id);
+        unimplemented!()
+        // pencil::jsonify(&post)
     }
 
     pub fn new<P>(config_file: Option<P>) -> App
@@ -125,7 +164,7 @@ fn main() {
 mod tests {
     use std::sync::Arc;
 
-    use chrono::{UTC, DateTime};
+    use chrono::UTC;
 
     use super::*;
     use super::dao::{self, Dao};
@@ -142,6 +181,9 @@ mod tests {
 
     #[test]
     fn test_inserts() {
+        APP.drop_db().unwrap();
+        APP.create_db().unwrap();
+
         let tags = vec![Tag {
                             name: String::from("test"),
                             id: 0,
@@ -179,55 +221,18 @@ mod tests {
         };
 
         let conn = Arc::new(APP.conn_pool.get().unwrap());
-        let user_dao = dao::UserDao::new(conn);
+        let user_dao = dao::UserDao::new(conn.clone());
         user_dao.insert(&mut user1).unwrap();
         user_dao.insert(&mut user2).unwrap();
 
         assert_eq!(user1.id, 1);
         assert_eq!(user2.id, 2);
+        let tag_dao = dao::TagDao::new(conn.clone());
+        let tags = tag_dao.get_all().unwrap();
+        assert_eq!(tags.len(), 3);
+        // assert_eq!(tag_dao.get_one(&1).unwrap().name, "test".to_string());
+        // assert_eq!(tag_dao.get_one(&2).unwrap().name, "work".to_string());
+        // assert_eq!(tag_dao.get_one(&3).unwrap().name, "other tag".to_string());
+
     }
-
-    // #[test]
-    // fn test_tag_dao() {
-    //     let conn = Arc::new(APP.conn_pool.get().unwrap());
-    //     let tag_dao = dao::TagDao::new(conn);
-    //     let name = String::from("test");
-    //     let tag = Tag {
-    //         name: name.clone(),
-    //         id: 1,
-    //     };
-    //     tag_dao.insert(&tag).unwrap();
-
-    //     let all = tag_dao.get_all().unwrap();
-    //     assert_eq!(all[0].name, name);
-
-    //     assert!(tag_dao.exists(&all[0].id).unwrap());
-
-    //     let one = tag_dao.get_one(&all[0].id).unwrap();
-    //     assert_eq!(one.name, name);
-    // }
-
-    // #[test]
-    // fn test_post_dao() {
-    //     let connection = Arc::new(APP.conn_pool.get().unwrap());
-
-    //     let post_dao = dao::PostDao::new(connection);
-    //     let post = post_dao.get_one(&1).unwrap();
-    //     assert_eq!(post.id, 1);
-    //     assert_eq!(post.content, String::from("This is the content of the test blog post"));
-    //     assert_eq!(post.title, String::from("A test blog post"));
-    //     assert!(post.tags.len() == 3);
-
-    //     let all_posts = post_dao.get_all().unwrap();
-    //     assert_eq!(all_posts.len(), 3);
-
-    //     let user_1_posts = post_dao.get_posts_for_user(1).unwrap();
-    //     assert_eq!(user_1_posts.len(), 2);
-    //     assert_eq!(user_1_posts[0].tags.len(), 2);
-    //     assert_eq!(user_1_posts[1].tags.len(), 3);
-
-    //     let user_2_posts = post_dao.get_posts_for_user(2).unwrap();
-    //     assert_eq!(user_2_posts.len(), 1);
-    //     assert_eq!(user_2_posts[0].tags.len(), 2);
-    // }
 }

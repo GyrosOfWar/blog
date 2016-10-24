@@ -26,6 +26,16 @@ pub trait Dao<T, K>
     fn update(&self, value: &T) -> Result<()>;
     fn get_one(&self, key: &K) -> Result<T>;
     fn exists(&self, key: &K) -> Result<bool>;
+    fn delete(&self, value: T) -> Result<T>;
+
+    fn delete_many<I>(&self, values: I) -> Result<()>
+        where I: Iterator<Item = T>
+    {
+        for value in values {
+            try!(self.delete(value));
+        }
+        Ok(())
+    }
 
     fn insert_many<'a, I>(&self, values: I) -> Result<()>
         where I: Iterator<Item = &'a mut T>,
@@ -101,6 +111,11 @@ impl Dao<Tag, i32> for TagDao {
             Ok(count > 0)
         }
     }
+
+    fn delete(&self, tag: Tag) -> Result<Tag> {
+        let stmt = try!(self.conn.execute("DELETE FROM tags WHERE id = $1", &[&tag.id]));
+        Ok(tag)
+    }
 }
 
 pub struct PostDao {
@@ -143,7 +158,7 @@ impl PostDao {
         WHERE users.id = $1";
         let query = try!(self.conn.query(sql, &[&user_id]));
         let iter = query.iter();
-        for (post_id, mut group) in &iter.group_by(|row| row.get::<usize, i32>(0)) {
+        for (_, mut group) in &iter.group_by(|row| row.get::<usize, i32>(0)) {
             let first = group.nth(0).unwrap();
             let mut post = Post::new(first.get(0),
                                      first.get(1),
@@ -186,7 +201,7 @@ impl Dao<Post, i32> for PostDao {
         let post_id: i32 = row.get(0);
         let tag_dao = TagDao::new(self.conn.clone());
         try!(tag_dao.insert_many(value.tags.iter_mut()));
-
+        value.set_key(post_id);
         Ok(())
     }
 
@@ -227,6 +242,11 @@ impl Dao<Post, i32> for PostDao {
             let count: i64 = row.get(0);
             Ok(count > 0)
         }
+    }
+
+    fn delete(&self, post: Post) -> Result<Post> {
+        try!(self.conn.execute("DELETE FROM posts WHERE id = $1", &[&post.id]));
+        Ok(post)
     }
 }
 
@@ -274,14 +294,47 @@ impl Dao<User, i32> for UserDao {
     }
 
     fn update(&self, value: &User) -> Result<()> {
-        unimplemented!()
+        try!(self.conn.execute("UPDATE users SET name = $1, pw_hash = $2 WHERE id = $3",
+                               &[&value.name, &value.pw_hash, &value.id]));
+        let post_dao = PostDao::new(self.conn.clone());
+        for post in &value.posts {
+            try!(post_dao.update(post));
+        }
+
+        Ok(())
     }
 
     fn get_one(&self, key: &i32) -> Result<User> {
-        unimplemented!()
+        let query = try!(self.conn
+            .query("SELECT name, pw_hash, id FROM users WHERE id = $1", &[&key]));
+        if query.is_empty() {
+            Err(Error::ExpectedResult)
+        } else {
+            let post_dao = PostDao::new(self.conn.clone());
+            let posts = try!(post_dao.get_posts_for_user(*key));
+            let row = query.get(0);
+            Ok(User {
+                name: row.get(0),
+                pw_hash: row.get(1),
+                id: row.get(2),
+                posts: posts,
+            })
+        }
     }
 
     fn exists(&self, key: &i32) -> Result<bool> {
-        unimplemented!()
+        let query = try!(self.conn.query("SELECT COUNT(*) FROM users WHERE id = $1", &[key]));
+        if query.is_empty() {
+            Err(Error::ExpectedResult)
+        } else {
+            let row = query.get(0);
+            let count: i64 = row.get(0);
+            Ok(count > 0)
+        }
+    }
+
+    fn delete(&self, user: User) -> Result<User> {
+        let stmt = try!(self.conn.execute("DELETE FROM users WHERE id = $1", &[&user.id]));
+        Ok(user)
     }
 }
