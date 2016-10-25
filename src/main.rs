@@ -28,70 +28,23 @@ use std::time::Instant;
 use std::sync::Arc;
 
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
-use pencil::Pencil;
-use pencil::{Request, PencilResult, Response};
+use pencil::{Request, PencilResult, Pencil};
 use pencil::method::Get;
 
 use util::DurationExt;
 use config::Config;
 use dao::{Dao, PostDao};
+use util::JsonResponse;
 
 mod model;
 mod util;
 mod dao;
 mod config;
-
-mod errors {
-    use postgres;
-    use r2d2;
-    use std::io;
-    use pencil;
-    use std::error::Error as StdError;
-
-    // TODO impl Serialze, Deserialize for Error
-    quick_error! {
-        #[derive(Debug)]
-        pub enum Error {
-            Io(err: io::Error) {
-                cause(err)
-                from()
-                description(err.description())
-            }
-
-            Postgres(err: postgres::error::Error) {
-                cause(err)
-                from()
-                description(err.description())
-            }
-
-            ConnTimeout(err: r2d2::GetTimeout) {
-                cause(err)
-                from()
-                description(err.description())
-            }
-
-            ExpectedResult {
-                description("Expected a result, got none")
-            }
-        }
-    }
-
-    pub fn to_pencil_error<E>(err: E) -> pencil::PencilError
-        where E: StdError
-    {
-        pencil::PencilError::PenUserError(pencil::UserError { desc: err.description().into() })
-    }
-
-    pub type Result<T> = ::std::result::Result<T, Error>;
-}
+mod errors;
+mod api;
 
 lazy_static! {
-    static ref APP: App = {
-        let app = App::new(Some("config.json"));
-        app.drop_db().unwrap();
-        app.create_db().unwrap();
-        app
-    };
+    pub static ref APP: App = App::new(Some("config.json"));
 }
 
 pub struct App {
@@ -101,23 +54,6 @@ pub struct App {
 }
 
 impl App {
-    fn hello(_: &mut Request) -> PencilResult {
-        Ok(Response::from("Hello world!"))
-    }
-
-    fn get_post(request: &mut Request) -> PencilResult {
-        let conn = Arc::new(try!(APP.conn_pool.get().map_err(|e| errors::to_pencil_error(e))));
-        let dao = PostDao::new(conn);
-        let id = try!(request.view_args
-            .get("id")
-            .unwrap()
-            .parse::<i32>()
-            .map_err(|e| errors::to_pencil_error(e)));
-        let post = dao.get_one(&id);
-        unimplemented!()
-        // pencil::jsonify(&post)
-    }
-
     pub fn new<P>(config_file: Option<P>) -> App
         where P: AsRef<Path>
     {
@@ -129,7 +65,8 @@ impl App {
         info!("Set up connection pool");
 
         let mut pencil = Pencil::new("/");
-        pencil.route("/", &[Get], "hello", App::hello);
+        let post_module = api::PostApi::get_module();
+        pencil.register_module(post_module);
 
         info!("Initializing took {:?} ms", start.elapsed().millis());
         App {
@@ -140,7 +77,7 @@ impl App {
     }
 
     pub fn run(self) {
-        info!("Startup..");
+        info!("Starting on {}:{}", self.config.host, self.config.port);
         self.pencil.run((self.config.host.as_str(), self.config.port))
     }
 
@@ -230,9 +167,10 @@ mod tests {
         let tag_dao = dao::TagDao::new(conn.clone());
         let tags = tag_dao.get_all().unwrap();
         assert_eq!(tags.len(), 3);
-        // assert_eq!(tag_dao.get_one(&1).unwrap().name, "test".to_string());
-        // assert_eq!(tag_dao.get_one(&2).unwrap().name, "work".to_string());
-        // assert_eq!(tag_dao.get_one(&3).unwrap().name, "other tag".to_string());
 
+        let deleted = tag_dao.delete(tags[0].clone()).unwrap();
+
+        let tags = tag_dao.get_all().unwrap();
+        assert!(!tags.contains(&deleted));
     }
 }

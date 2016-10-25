@@ -113,7 +113,7 @@ impl Dao<Tag, i32> for TagDao {
     }
 
     fn delete(&self, tag: Tag) -> Result<Tag> {
-        let stmt = try!(self.conn.execute("DELETE FROM tags WHERE id = $1", &[&tag.id]));
+        try!(self.conn.execute("DELETE FROM tags WHERE id = $1", &[&tag.id]));
         Ok(tag)
     }
 }
@@ -334,7 +334,7 @@ impl Dao<User, i32> for UserDao {
     }
 
     fn delete(&self, user: User) -> Result<User> {
-        let stmt = try!(self.conn.execute("DELETE FROM users WHERE id = $1", &[&user.id]));
+        try!(self.conn.execute("DELETE FROM users WHERE id = $1", &[&user.id]));
         Ok(user)
     }
 }

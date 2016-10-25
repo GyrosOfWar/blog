@@ -1,8 +1,9 @@
 use chrono::DateTime;
 use chrono::UTC;
 use dao::{UserDao, HasKey, Dao};
+use errors::Result;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Tag {
     pub name: String,
     pub id: i32,
@@ -25,7 +26,6 @@ pub struct Post {
     pub id: i32,
     pub created_on: DateTime<UTC>,
     pub owner_id: i32,
-    owner: Option<User>,
 }
 
 impl HasKey<i32> for Post {
@@ -52,13 +52,12 @@ impl Post {
             tags: tags,
             owner_id: owner_id,
             created_on: created_on,
-            owner: None,
         }
     }
 
-    pub fn get_owner<'a>(&mut self, user_dao: &UserDao) -> &'a User {
-        // TODO cache the user in the struct
-        unimplemented!()
+    pub fn get_owner(&mut self, user_dao: &UserDao) -> Result<User> {
+        // TODO maybe cache user in struct
+        user_dao.get_one(&self.owner_id)
     }
 }
 

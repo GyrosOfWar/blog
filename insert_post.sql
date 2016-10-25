@@ -19,7 +19,8 @@ INSERT INTO posts (title, content, id, created_on, owner_id) VALUES
 
 INSERT INTO tags (name, id) VALUES ('content', 1), ('test', 2), ('testing', 3), ('stuff', 4), ('user2', 5), ('junk', 6);
 
-INSERT INTO posts_tags (post_id, tag_id) VALUES (1, 1), (1, 2), (1, 3),
+INSERT INTO posts_tags (post_id, tag_id) VALUES 
+(1, 1), (1, 2), (1, 3),
   (2, 3), (2, 4),
   (3, 5), (3, 6);
 

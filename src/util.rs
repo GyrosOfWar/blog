@@ -2,6 +2,8 @@ use std::time::Duration;
 use std::path::Path;
 use std::fs::File;
 use std::io::Read;
+use serde::Serialize;
+use std::error::Error as StdError;
 
 use errors::Result;
 use dao::Connection;
@@ -61,4 +63,24 @@ pub fn execute_sql_file<P>(path: P, connection: &Connection) -> Result<()>
     }
     info!("Finished executing SQL!");
     Ok(())
+}
+
+#[derive(Serialize)]
+pub enum JsonResponse<T, E> {
+    #[serde(rename="result")]
+    Result(T),
+    #[serde(rename="error")]
+    Error(E),
+}
+
+impl<T, E> JsonResponse<T, E>
+    where T: Serialize,
+          E: StdError + Serialize
+{
+    pub fn from_result(result: ::std::result::Result<T, E>) -> JsonResponse<T, E> {
+        match result {
+            Ok(v) => JsonResponse::Result(v),
+            Err(e) => JsonResponse::Error(e),
+        }
+    }
 }
