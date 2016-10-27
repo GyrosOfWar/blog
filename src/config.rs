@@ -34,6 +34,7 @@ pub struct Config {
     pub db_string: String,
     pub host: String,
     pub port: u16,
+    pub debug: bool,
 }
 
 fn find_string(path: &str, value: &Value) -> String {
@@ -44,6 +45,11 @@ fn find_string(path: &str, value: &Value) -> String {
 fn find_u64(path: &str, value: &Value) -> u64 {
     let ptr = value.pointer(path);
     ptr.unwrap().as_u64().unwrap()
+}
+
+fn find_bool(path: &str, value: &Value) -> bool {
+    let ptr = value.pointer(path);
+    ptr.unwrap().as_bool().unwrap()
 }
 
 impl Config {
@@ -63,6 +69,7 @@ impl Config {
             db_string: find_string("/database/url", &json),
             host: find_string("/web/host", &json),
             port: find_u64("/web/port", &json) as u16,
+            debug: find_bool("/web/debug", &json),
         }
     }
 }

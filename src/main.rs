@@ -22,6 +22,8 @@ extern crate chrono;
 extern crate pencil;
 extern crate serde;
 extern crate serde_json;
+extern crate hyper;
+extern crate markdown;
 
 use std::path::Path;
 use std::time::Instant;
@@ -44,7 +46,11 @@ mod errors;
 mod api;
 
 lazy_static! {
-    pub static ref APP: App = App::new(Some("config.json"));
+    static ref APP: App = App::new(Some("config.json"));
+}
+
+pub fn get_connection() -> Arc<dao::Connection> {
+    Arc::new(APP.conn_pool.get().unwrap())
 }
 
 pub struct App {
@@ -65,8 +71,12 @@ impl App {
         info!("Set up connection pool");
 
         let mut pencil = Pencil::new("/");
-        let post_module = api::PostApi::get_module();
-        pencil.register_module(post_module);
+        if config.debug {
+            pencil.set_debug(true);
+            pencil.set_log_level();
+        }
+
+        pencil.route("/api/user/", &[Get], "get_user", api::UserApi::get_user);
 
         info!("Initializing took {:?} ms", start.elapsed().millis());
         App {
@@ -107,14 +117,14 @@ mod tests {
     use super::dao::{self, Dao};
     use super::model::{Tag, User, Post};
 
-    lazy_static! {
-        static ref APP: App = {
-            let app = App::new(Some("config_test.json"));
-            app.drop_db().unwrap();
-            app.create_db().unwrap();
-            app
-        };
-    }
+    // lazy_static! {
+    //     static ref APP: App = {
+    //         let app = App::new(Some("config_test.json"));
+    //         app.drop_db().unwrap();
+    //         app.create_db().unwrap();
+    //         app
+    //     };
+    // }
 
     #[test]
     fn test_inserts() {

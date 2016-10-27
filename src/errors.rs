@@ -2,6 +2,7 @@ use postgres;
 use r2d2;
 use std::io;
 use pencil;
+use hyper;
 use std::error::Error as StdError;
 
 use serde::{Serialize, Serializer};
@@ -29,6 +30,12 @@ quick_error! {
 
         ExpectedResult {
             description("Expected a result, got none")
+        }
+
+        Hyper(err: hyper::Error) {
+            cause(err)
+            from()
+            description(err.description())
         }
     }
 }
