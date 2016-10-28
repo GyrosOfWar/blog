@@ -158,6 +158,7 @@ impl PostDao {
         WHERE users.id = $1";
         let query = try!(self.conn.query(sql, &[&user_id]));
         let iter = query.iter();
+        // Group by post ID
         for (_, mut group) in &iter.group_by(|row| row.get::<usize, i32>(0)) {
             let first = group.nth(0).unwrap();
             let mut post = Post::new(first.get(0),
@@ -195,8 +196,9 @@ impl Dao<Post, i32> for PostDao {
 
     fn insert(&self, value: &mut Post) -> Result<()> {
         let query = try!(self.conn
-            .query("INSERT INTO posts (title, content) VALUES ($1, $2) RETURNING id",
-                   &[&value.title, &value.content]));
+            .query("INSERT INTO posts (title, content, created_on, owner_id) VALUES ($1, $2, \
+                    $3, $4) RETURNING id",
+                   &[&value.title, &value.content, &value.created_on, &value.owner_id]));
         let row = query.get(0);
         let post_id: i32 = row.get(0);
         let tag_dao = TagDao::new(self.conn.clone());
@@ -336,5 +338,74 @@ impl Dao<User, i32> for UserDao {
     fn delete(&self, user: User) -> Result<User> {
         try!(self.conn.execute("DELETE FROM users WHERE id = $1", &[&user.id]));
         Ok(user)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use chrono::UTC;
+
+    use app::{APP, get_connection};
+    use super::*;
+    use model::{Tag, User, Post};
+
+    #[test]
+    fn test_inserts() {
+        APP.drop_db().unwrap();
+        APP.create_db().unwrap();
+
+        let tags = vec![Tag {
+                            name: String::from("test"),
+                            id: 0,
+                        },
+                        Tag {
+                            name: String::from("work"),
+                            id: 0,
+                        },
+                        Tag {
+                            name: String::from("other tag"),
+                            id: 0,
+                        }];
+
+        let posts = vec![
+            Post::new(0, "Post 1".into(), "Content 1".into(), 
+                      UTC::now(), 1, vec![tags[0].clone(), tags[1].clone() ]),
+            Post::new(0, "Post 2".into(), "Content 2".into(),
+                      UTC::now(), 1, vec![tags[1].clone(), tags[2].clone()]),
+            Post::new(0, "Post 3".into(), "Content 3".into(),
+                      UTC::now(), 2, vec![tags[0].clone(), tags[2].clone()]),
+        ];
+
+        let mut user1 = User {
+            name: String::from("martin"),
+            pw_hash: String::from("test"),
+            posts: vec![posts[0].clone(), posts[1].clone()],
+            id: 0,
+        };
+
+        let mut user2 = User {
+            name: "user2".into(),
+            pw_hash: "test".into(),
+            posts: vec![posts[2].clone()],
+            id: 0,
+        };
+
+        let conn = get_connection();
+        let user_dao = UserDao::new(conn.clone());
+        user_dao.insert(&mut user1).unwrap();
+        user_dao.insert(&mut user2).unwrap();
+
+        assert_eq!(user1.id, 1);
+        assert_eq!(user2.id, 2);
+        let tag_dao = TagDao::new(conn.clone());
+        let tags = tag_dao.get_all().unwrap();
+        assert_eq!(tags.len(), 3);
+
+        let deleted = tag_dao.delete(tags[0].clone()).unwrap();
+
+        let tags = tag_dao.get_all().unwrap();
+        assert!(!tags.contains(&deleted));
     }
 }

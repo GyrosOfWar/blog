@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS posts (
     title VARCHAR NOT NULL,
     content VARCHAR NOT NULL,
     id SERIAL PRIMARY KEY,
-    created_on TIMESTAMP WITH TIME ZONE,
-    owner_id INTEGER REFERENCES users (id)
+    created_on TIMESTAMP WITH TIME ZONE NOT NULL,
+    owner_id INTEGER REFERENCES users (id) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS posts_tags (
