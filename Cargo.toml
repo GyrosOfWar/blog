@@ -4,17 +4,20 @@ version = "0.1.0"
 authors = ["Martin Tomasi <martin.tomasi@gmail.com>"]
 
 [dependencies]
+
 postgres = { version = "0.12", features = ["with-chrono"] }
-quick-error = "1.1"
 r2d2 = "0.7"
 r2d2_postgres = "0.11"
+
 log = "0.3"
 env_logger = "0.3"
 dotenv = "0.8"
+
 time = "0.1"
 lazy_static = "0.2"
+quick-error = "1.1"
 toml = "0.2"
-pencil = { git = "https://github.com/GyrosOfWar/pencil" }
+
 itertools = "0.5"
 chrono = { version = "0.2", features = ["serde"] }
 serde = "0.8"
@@ -22,3 +25,9 @@ serde_json = "0.8"
 serde_derive = "0.8"
 markdown = "0.1"
 hyper = "0.9"
+
+iron = "0.4"
+router = "0.4"
+mount = "0.2"
+[dependencies.iron_diesel_middleware]
+git = "https://github.com/darayus/iron-diesel-middleware"

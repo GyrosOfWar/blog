@@ -346,8 +346,7 @@ mod tests {
     use std::sync::Arc;
 
     use chrono::UTC;
-
-    use app::{APP, get_connection};
+    
     use super::*;
     use model::{Tag, User, Post};
 

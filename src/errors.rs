@@ -1,7 +1,6 @@
 use postgres;
 use r2d2;
 use std::io;
-use pencil;
 use hyper;
 use std::error::Error as StdError;
 
@@ -49,12 +48,6 @@ impl Serialize for Error {
         try!(serializer.serialize_map_value(&mut state, self.description()));
         serializer.serialize_map_end(state)
     }
-}
-
-pub fn to_pencil_error<E>(err: E) -> pencil::PencilError
-    where E: StdError
-{
-    pencil::PencilError::PenUserError(pencil::UserError { desc: err.description().into() })
 }
 
 pub type Result<T> = ::std::result::Result<T, Error>;

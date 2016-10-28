@@ -1,8 +1,6 @@
 use std::sync::Arc;
 use std::io::Read;
 
-use pencil::{PencilResult, Request, Module, jsonify};
-use pencil::method;
 use serde_json;
 use chrono::UTC;
 use hyper::Client;
@@ -10,7 +8,6 @@ use hyper::header::{ContentType, UserAgent};
 use hyper::mime::Mime;
 use markdown;
 
-use app::get_connection;
 use dao::{Dao, PostDao};
 use util::JsonResponse;
 use errors::*;
@@ -68,32 +65,6 @@ impl CreatePostRequest {
 pub struct UserApi;
 
 impl UserApi {
-    pub fn get_user(request: &mut Request) -> PencilResult {
-        unimplemented!()
-    }
-
-    pub fn get_post(request: &mut Request) -> PencilResult {
-        let conn = get_connection();
-        let dao = PostDao::new(conn);
-        let id = try!(request.view_args
-            .get("id")
-            .unwrap()
-            .parse::<i32>()
-            .map_err(|e| to_pencil_error(e)));
-        let post = dao.get_one(&id);
-        jsonify(&JsonResponse::from_result(post))
-    }
-
-    pub fn put_post(request: &mut Request) -> PencilResult {
-        let conn = get_connection();
-        let dao = PostDao::new(conn);
-        let post_request: CreatePostRequest = try!(serde_json::from_reader(request)
-            .map_err(|e| to_pencil_error(e)));
-        let mut post = try!(post_request.to_post().map_err(|e| to_pencil_error(e)));
-        try!(dao.insert(&mut post).map_err(|e| to_pencil_error(e)));
-        let response: JsonResponse<_, Box<Error>> = JsonResponse::Result(post.id);
-        jsonify(&response)
-    }
 }
 
 mod tests {
