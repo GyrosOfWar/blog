@@ -4,6 +4,9 @@ use std::fs::File;
 use std::io::Read;
 use serde::Serialize;
 use std::error::Error as StdError;
+use std::io;
+
+use iron::response::{WriteBody, ResponseBody};
 
 use errors::Result;
 
@@ -64,3 +67,12 @@ impl<T, E> JsonResponse<T, E>
         }
     }
 }
+
+// impl<T, E> WriteBody for JsonResponse<T, E> 
+//     where T: Send,
+//           E: Send
+// {
+//     fn write_body(&mut self, res: &mut ResponseBody) -> io::Result<()> {
+//         let 
+//     }
+// }

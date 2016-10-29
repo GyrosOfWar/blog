@@ -2,6 +2,8 @@ use r2d2;
 use std::io;
 use hyper;
 use std::error::Error as StdError;
+use diesel;
+use serde_json;
 
 use serde::{Serialize, Serializer};
 
@@ -25,6 +27,18 @@ quick_error! {
         }
 
         Hyper(err: hyper::Error) {
+            cause(err)
+            from()
+            description(err.description())
+        }
+
+        Diesel(err: diesel::result::Error) {
+            cause(err)
+            from()
+            description(err.description())
+        }
+
+        SerdeJson(err: serde_json::Error) {
             cause(err)
             from()
             description(err.description())

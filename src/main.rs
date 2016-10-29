@@ -40,6 +40,8 @@ mod api;
 mod schema;
 
 use std::env;
+use std::error;
+use std::io::Read;
 
 use diesel::prelude::*;
 use iron::prelude::*;   
@@ -49,25 +51,51 @@ use router::Router;
 use iron_diesel_middleware::{DieselMiddleware, DieselReqExt};
 
 use model::Post;
+use util::JsonResponse;
+use api::CreatePostRequest;
 
 fn get_post(req: &mut Request) -> IronResult<Response> {
     use schema::posts::dsl::*;
 
-    // TODO get rid of unwraps;
-    let post_id: i32 = req.extensions.get::<Router>().unwrap().find("id").unwrap().parse().unwrap();
+    let post_id: i32 = itry!(req.extensions.get::<Router>().unwrap().find("id").unwrap().parse());
+    let conn = req.db_conn();
+    let result: Vec<Post> = itry!(posts.filter(id.eq(post_id))
+         .limit(1)
+         .load::<Post>(&*conn));
+    if result.len() == 0 {
+        let response: JsonResponse<String, _> = JsonResponse::Error(format!("No post found with ID {}", post_id));
+        let response = itry!(serde_json::to_string(&response));
+        Ok(Response::with(response))
+    } else {
+        let response: JsonResponse<_, errors::Error> = JsonResponse::Result(result);
+        let response = itry!(serde_json::to_string(&response));
+        Ok(Response::with(response))
+    }
+}
+
+fn _add_post(req: &mut Request) -> errors::Result<Post> {
+    use schema::posts;
 
     let conn = req.db_conn();
-    let result = itry!(posts.filter(id.eq(post_id))
-        .limit(1)
-        .load::<Post>(&*conn));
+    let mut body = String::new();
+    try!(req.body.read_to_string(&mut body));
+    let post_request: CreatePostRequest = try!(serde_json::from_str(&body));
+    let result: Vec<Post> = try!(diesel::insert(&post_request).into(posts::table)
+                        .get_results(&*conn));
+    Ok(result[0].clone())
+}
 
-    Ok(Response::with((status::Ok, "Ok!")))
+fn add_post(req: &mut Request) -> IronResult<Response> {
+    let result = JsonResponse::from_result(_add_post(req));
+    let response = itry!(serde_json::to_string(&result));
+    Ok(Response::with(response))
 }
 
 fn main() {
     dotenv::dotenv().unwrap();
     let api_router = router!(
-        get_post: get "/post/:id" => get_post
+        get_post: get "/post/:id" => get_post,
+        add_post: post "/post" => add_post
     );
 
     let mut mount = Mount::new();

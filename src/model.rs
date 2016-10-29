@@ -1,21 +1,21 @@
+// infer_schema!("dotenv:DATABASE_URL");
+
+use diesel::*;
 use chrono::DateTime;
 use chrono::UTC;
 use errors::Result;
+use schema::*;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Queryable)]
-pub struct Tag {
-    pub name: String,
-    pub id: i32,
-}
+#[derive(PartialEq, Eq, Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
+#[belongs_to(User)]
 
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable)]
 pub struct Post {
     pub title: String,
     pub content: String,
-    pub tags: Vec<Tag>,
     pub id: i32,
     pub created_on: DateTime<UTC>,
     pub owner_id: i32,
+    pub tags: Vec<String>,
 }
 
 impl Post {
@@ -24,7 +24,7 @@ impl Post {
                content: String,
                created_on: DateTime<UTC>,
                owner_id: i32,
-               tags: Vec<Tag>)
+               tags: Vec<String>)
                -> Post {
         Post {
             title: title,
@@ -37,13 +37,15 @@ impl Post {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable)]
+#[derive(PartialEq, Eq, Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
+#[has_many(posts)]
+#[table_name = "users"]
 pub struct User {
     pub name: String,
     #[serde(skip_serializing)]
     #[serde(default)]
     pub pw_hash: String,
-    pub posts: Vec<Post>,
+    // pub posts: Vec<Post>,
     pub id: i32,
 }
 
