@@ -1,4 +1,3 @@
-use postgres;
 use r2d2;
 use std::io;
 use hyper;
@@ -10,12 +9,6 @@ quick_error! {
     #[derive(Debug)]
     pub enum Error {
         Io(err: io::Error) {
-            cause(err)
-            from()
-            description(err.description())
-        }
-
-        Postgres(err: postgres::error::Error) {
             cause(err)
             from()
             description(err.description())

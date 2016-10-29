@@ -1,24 +1,14 @@
 use chrono::DateTime;
 use chrono::UTC;
-use dao::{UserDao, HasKey, Dao};
 use errors::Result;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Queryable)]
 pub struct Tag {
     pub name: String,
     pub id: i32,
 }
 
-impl HasKey<i32> for Tag {
-    fn get_key(&self) -> i32 {
-        self.id
-    }
-    fn set_key(&mut self, key: i32) {
-        self.id = key
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable)]
 pub struct Post {
     pub title: String,
     pub content: String,
@@ -26,15 +16,6 @@ pub struct Post {
     pub id: i32,
     pub created_on: DateTime<UTC>,
     pub owner_id: i32,
-}
-
-impl HasKey<i32> for Post {
-    fn get_key(&self) -> i32 {
-        self.id
-    }
-    fn set_key(&mut self, key: i32) {
-        self.id = key
-    }
 }
 
 impl Post {
@@ -54,14 +35,9 @@ impl Post {
             created_on: created_on,
         }
     }
-
-    pub fn get_owner(&mut self, user_dao: &UserDao) -> Result<User> {
-        // TODO maybe cache user in struct
-        user_dao.get_one(&self.owner_id)
-    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable)]
 pub struct User {
     pub name: String,
     #[serde(skip_serializing)]
@@ -69,15 +45,6 @@ pub struct User {
     pub pw_hash: String,
     pub posts: Vec<Post>,
     pub id: i32,
-}
-
-impl HasKey<i32> for User {
-    fn get_key(&self) -> i32 {
-        self.id
-    }
-    fn set_key(&mut self, key: i32) {
-        self.id = key
-    }
 }
 
 #[cfg(test)]

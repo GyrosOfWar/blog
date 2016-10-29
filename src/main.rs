@@ -13,9 +13,10 @@ extern crate env_logger;
 extern crate dotenv;
 extern crate time;
 
-extern crate postgres;
+#[macro_use] extern crate diesel;
+#[macro_use] extern crate diesel_codegen;
 extern crate r2d2;
-extern crate r2d2_postgres;
+extern crate r2d2_diesel;
 
 extern crate itertools;
 extern crate chrono;
@@ -32,11 +33,15 @@ extern crate iron_diesel_middleware;
 
 mod model;
 mod util;
-mod dao;
 mod config;
 mod errors;
 mod api;
+mod schema;
 
+use std::env;
+
+use diesel::prelude::*;
+use diesel::pg::PgConnection;
 use iron::prelude::*;
 use mount::Mount;
 
@@ -44,7 +49,17 @@ fn index(_: &mut Request) -> IronResult<Response> {
     unimplemented!()
 }
 
+pub fn establish_connection() -> PgConnection {
+    dotenv().ok();
+
+    let database_url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set");
+    PgConnection::establish(&database_url)
+        .expect(&format!("Error connecting to {}", database_url))
+}
+
 fn main() {
+    
     let api_router = router!(
         index: get "/" => index
     );

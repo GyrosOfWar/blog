@@ -8,7 +8,6 @@ use hyper::header::{ContentType, UserAgent};
 use hyper::mime::Mime;
 use markdown;
 
-use dao::{Dao, PostDao};
 use util::JsonResponse;
 use errors::*;
 use model::*;

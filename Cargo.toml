@@ -5,9 +5,10 @@ authors = ["Martin Tomasi <martin.tomasi@gmail.com>"]
 
 [dependencies]
 
-postgres = { version = "0.12", features = ["with-chrono"] }
+diesel = { version = "0.8", features = ["chrono"] }
+diesel_codegen = { version = "0.8", features = ["postgres"] }
 r2d2 = "0.7"
-r2d2_postgres = "0.11"
+r2d2-diesel = "0.8"
 
 log = "0.3"
 env_logger = "0.3"
