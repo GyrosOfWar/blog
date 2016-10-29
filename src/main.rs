@@ -25,6 +25,7 @@ extern crate serde_json;
 extern crate hyper;
 extern crate markdown;
 
+#[macro_use]
 extern crate iron;
 #[macro_use]
 extern crate router;
@@ -41,31 +42,42 @@ mod schema;
 use std::env;
 
 use diesel::prelude::*;
-use diesel::pg::PgConnection;
-use iron::prelude::*;
+use iron::prelude::*;   
+use iron::status;
 use mount::Mount;
+use router::Router;
+use iron_diesel_middleware::{DieselMiddleware, DieselReqExt};
 
-fn index(_: &mut Request) -> IronResult<Response> {
-    unimplemented!()
-}
+use model::Post;
 
-pub fn establish_connection() -> PgConnection {
-    dotenv().ok();
+fn get_post(req: &mut Request) -> IronResult<Response> {
+    use schema::posts::dsl::*;
 
-    let database_url = env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set");
-    PgConnection::establish(&database_url)
-        .expect(&format!("Error connecting to {}", database_url))
+    // TODO get rid of unwraps;
+    let post_id: i32 = req.extensions.get::<Router>().unwrap().find("id").unwrap().parse().unwrap();
+
+    let conn = req.db_conn();
+    let result = itry!(posts.filter(id.eq(post_id))
+        .limit(1)
+        .load::<Post>(&*conn));
+
+    Ok(Response::with((status::Ok, "Ok!")))
 }
 
 fn main() {
-    
+    dotenv::dotenv().unwrap();
     let api_router = router!(
-        index: get "/" => index
+        get_post: get "/post/:id" => get_post
     );
 
     let mut mount = Mount::new();
     mount.mount("/api", api_router);
-    let iron = Iron::new(mount);
+    
+    let db_url = env::var("DATABASE_URL").unwrap(); 
+    let diesel_middleware = DieselMiddleware::new(&db_url).unwrap();
+    let mut chain = Chain::new(mount);
+    chain.link_before(diesel_middleware);
+    
+    let iron = Iron::new(chain);
     iron.http("localhost:5000").unwrap();
 }
