@@ -67,12 +67,3 @@ impl<T, E> JsonResponse<T, E>
         }
     }
 }
-
-// impl<T, E> WriteBody for JsonResponse<T, E> 
-//     where T: Send,
-//           E: Send
-// {
-//     fn write_body(&mut self, res: &mut ResponseBody) -> io::Result<()> {
-//         let 
-//     }
-// }

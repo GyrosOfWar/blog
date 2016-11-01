@@ -1,14 +1,8 @@
-// infer_schema!("dotenv:DATABASE_URL");
-
-use diesel::*;
-use chrono::DateTime;
-use chrono::UTC;
-use errors::Result;
+use chrono::{DateTime, UTC};
 use schema::*;
 
 #[derive(PartialEq, Eq, Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
 #[belongs_to(User)]
-
 pub struct Post {
     pub title: String,
     pub content: String,

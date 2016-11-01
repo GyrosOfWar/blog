@@ -4,7 +4,6 @@ version = "0.1.0"
 authors = ["Martin Tomasi <martin.tomasi@gmail.com>"]
 
 [dependencies]
-
 diesel = { version = "0.8", features = ["chrono"] }
 diesel_codegen = { version = "0.8", features = ["postgres"] }
 r2d2 = "0.7"
@@ -30,5 +29,12 @@ hyper = "0.9"
 iron = "0.4"
 router = "0.4"
 mount = "0.2"
+bodyparser = "*"
+persistent = "*"
+jwt = "0.4"
+rust-crypto = "0.2"
+
+clippy = "*"
+
 [dependencies.iron_diesel_middleware]
 git = "https://github.com/darayus/iron-diesel-middleware"
