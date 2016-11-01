@@ -13,7 +13,7 @@ use env_logger;
 
 static LOGGER_INITIALIZED: AtomicBool = ATOMIC_BOOL_INIT;
 
-fn configure_logger() {
+pub fn configure_logger() {
     dotenv::dotenv().unwrap();
     let format = |record: &log::LogRecord| {
         let cur_time = time::now();

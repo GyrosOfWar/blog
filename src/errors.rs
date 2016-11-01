@@ -43,6 +43,14 @@ quick_error! {
             from()
             description(err.description())
         }
+
+        InvalidCredentials {
+            description("Invalid credentials")
+        }
+
+        CreateToken {
+            description("Could not create token")
+        }
     }
 }
 

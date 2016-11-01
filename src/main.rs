@@ -38,6 +38,7 @@ extern crate bodyparser;
 extern crate persistent;
 extern crate jwt;
 extern crate crypto;
+extern crate pwhash;
 
 mod model;
 mod util;
@@ -58,58 +59,74 @@ use iron::status;
 use mount::Mount;
 use router::Router;
 use iron_diesel_middleware::{DieselMiddleware, DieselReqExt};
+use serde::Deserialize;
 
 use model::Post;
+use service::{UserService, CreateUserRequest};
+use auth::UserCredentials;
+use errors::*;
 
-// 10 MB
-const MAX_BODY_LENGTH: usize = 1024 * 1024 * 10;
+const SECRET: &'static [u8] = b"I LOVE FOOD";
+
+// 100 MB
+const MAX_BODY_LENGTH: usize = 1024 * 1024 * 100;
 
 // TODO use bodyparser, json_response crates
 fn get_post(req: &mut Request) -> IronResult<Response> {
     use schema::posts::dsl::*;
-
     unimplemented!()
-    // let post_id: i32 = itry!(req.extensions.get::<Router>().unwrap().find("id").unwrap().parse());
-    // let conn = req.db_conn();
-    // let result: Vec<Post> = itry!(posts.filter(id.eq(post_id))
-    //     .limit(1)
-    //     .load::<Post>(&*conn));
-    // if result.len() == 0 {
-    //     let response: JsonResponse<String, _> =
-    //         JsonResponse::Error(format!("No post found with ID {}", post_id));
-    //     let response = itry!(serde_json::to_string(&response));
-    //     Ok(Response::with(response))
-    // } else {
-    //     let response: JsonResponse<_, errors::Error> = JsonResponse::Result(result);
-    //     let response = itry!(serde_json::to_string(&response));
-    //     Ok(Response::with(response))
-    // }
-}
-
-fn _add_post(req: &mut Request) -> errors::Result<Post> {
-    use schema::posts;
-    unimplemented!()
-    // let conn = req.db_conn();
-    // let post_request = try!(req.get::<bodyparser::Struct<CreatePostRequest>>()).unwrap();
-    // post_request.content = api::markdown_to_html(&post_request.content);
-    // let result: Vec<Post> = try!(diesel::insert(&post_request)
-    //     .into(posts::table)
-    //     .get_results(&*conn));
-    // Ok(result[0].clone())
 }
 
 fn add_post(req: &mut Request) -> IronResult<Response> {
     unimplemented!()
-    // let result = JsonResponse::from_result(_add_post(req));
-    // let response = itry!(serde_json::to_string(&result));
-    // Ok(Response::with(response))
+}
+
+fn read_json_body<T>(req: &mut Request) -> Result<T> 
+    where T: Deserialize
+{
+    let mut body = String::new();
+    try!(req.body.read_to_string(&mut body));
+    debug!("Request body: {}", body);
+    serde_json::from_str(&body).map_err(From::from)
+}
+
+fn make_token(req: &mut Request) -> IronResult<Response> {
+    let conn = req.db_conn();
+    let service = UserService::new(&*conn);
+    match read_json_body::<UserCredentials>(req) {
+        Ok(creds) => {
+            let token_resp = service.make_token(&creds.user, &creds.password, SECRET);
+            let json = itry!(serde_json::to_string(&token_resp));
+            Ok(Response::with((status::Ok, json)))
+        }
+        Err(why) => {
+            Ok(Response::with((status::BadRequest, format!("Error: {}", why))))
+        }
+    }
+}
+
+fn create_user(req: &mut Request) -> IronResult<Response> {
+    let conn = req.db_conn();
+    let service = UserService::new(&*conn);
+    match read_json_body::<CreateUserRequest>(req) {
+        Ok(req) => {
+            let resp = service.create_user(req);
+            let json = itry!(serde_json::to_string(&resp));
+            Ok(Response::with(json))
+        }
+        Err(why) => {
+            Ok(Response::with((status::BadRequest, format!("Error: {:?}", why))))
+        }
+    }
 }
 
 fn main() {
-    dotenv::dotenv().unwrap();
+    config::configure_logger();
     let api_router = router!(
         get_post: get "/user/:user_id/post/:post_id" => get_post,
-        add_post: post "/user/:user_id/post" => add_post
+        add_post: post "/user/:user_id/post" => add_post,
+        make_token: post "/token" => make_token,
+        create_user: post "/user" => create_user
     );
 
     let mut mount = Mount::new();
@@ -119,7 +136,8 @@ fn main() {
     let diesel_middleware = DieselMiddleware::new(&db_url).unwrap();
     let mut chain = Chain::new(mount);
     chain.link_before(diesel_middleware);
-    chain.link_before(persistent::Read::<bodyparser::MaxBodyLength>::one(MAX_BODY_LENGTH));
+    // chain.link_before(persistent::Read::<bodyparser::MaxBodyLength>::one(MAX_BODY_LENGTH));
+    // chain.link_before(auth::JwtMiddleware::new(b"super secret"));
     let iron = Iron::new(chain);
     iron.http("localhost:5000").unwrap();
 }

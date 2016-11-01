@@ -11,27 +11,8 @@ pub struct Post {
     pub owner_id: i32,
     pub tags: Vec<String>,
 }
-
-impl Post {
-    pub fn new(id: i32,
-               title: String,
-               content: String,
-               created_on: DateTime<UTC>,
-               owner_id: i32,
-               tags: Vec<String>)
-               -> Post {
-        Post {
-            title: title,
-            content: content,
-            id: id,
-            tags: tags,
-            owner_id: owner_id,
-            created_on: created_on,
-        }
-    }
-}
-
-#[derive(PartialEq, Eq, Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
+    
+#[derive(PartialEq, Eq, Debug, Clone, Queryable, Identifiable, Insertable, Serialize, Deserialize)]
 #[has_many(posts)]
 #[table_name = "users"]
 pub struct User {
@@ -39,7 +20,6 @@ pub struct User {
     #[serde(skip_serializing)]
     #[serde(default)]
     pub pw_hash: String,
-    // pub posts: Vec<Post>,
     pub id: i32,
 }
 

@@ -1,12 +1,9 @@
 use std::time::Duration;
-use std::path::Path;
-use std::fs::File;
-use std::io::Read;
-use serde::Serialize;
 use std::error::Error as StdError;
-use std::io;
 
-use iron::response::{WriteBody, ResponseBody};
+use iron::{IronResult, Response, status};
+use serde_json;
+use serde::Serialize;
 
 use errors::Result;
 
@@ -64,6 +61,14 @@ impl<T, E> JsonResponse<T, E>
         match result {
             Ok(v) => JsonResponse::Result(v),
             Err(e) => JsonResponse::Error(e),
+        }
+    }
+
+    pub fn to_iron_result(self) -> IronResult<Response> {
+        use self::JsonResponse::*;
+        match self {
+            Result(t) => Ok(Response::with((status::Ok, serde_json::to_string(&t).unwrap()))),
+            Error(why) => Ok(Response::with((status::BadRequest, format!("Error: {}", why))))
         }
     }
 }

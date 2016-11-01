@@ -33,6 +33,7 @@ bodyparser = "*"
 persistent = "*"
 jwt = "0.4"
 rust-crypto = "0.2"
+pwhash = "0.1.1"
 
 clippy = "*"
 
