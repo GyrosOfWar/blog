@@ -23,6 +23,23 @@ pub struct User {
     pub id: i32,
 }
 
+#[derive(Debug, Clone, Deserialize, Insertable)]
+#[table_name = "posts"]
+pub struct CreatePostRequest {
+    pub title: String,
+    pub content: String,
+    pub tags: Vec<String>,
+    pub owner_id: i32,
+    #[serde(default = "UTC::now")]
+    pub created_on: DateTime<UTC>,
+}
+
+#[derive(Deserialize)]
+pub struct CreateUserRequest {
+    pub name: String,
+    pub password: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

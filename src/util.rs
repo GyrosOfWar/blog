@@ -1,9 +1,13 @@
 use std::time::Duration;
 use std::error::Error as StdError;
+use std::io::Read;
 
 use iron::{IronResult, Response, status};
 use serde_json;
 use serde::Serialize;
+use hyper::Client;
+use hyper::mime::Mime;
+use hyper::header::{ContentType, UserAgent};
 
 use errors::Result;
 
@@ -69,6 +73,33 @@ impl<T, E> JsonResponse<T, E>
         match self {
             Result(t) => Ok(Response::with((status::Ok, serde_json::to_string(&t).unwrap()))),
             Error(why) => Ok(Response::with((status::BadRequest, format!("Error: {}", why))))
+        }
+    }
+}
+
+fn convert_markdown_github(content: &str) -> Result<String> {
+    let client = Client::new();
+    let mime: Mime = "text/x-markdown".parse().unwrap();
+    let mut res = try!(client.post("https://api.github.com/markdown/raw")
+        .body(content)
+        .header(ContentType(mime))
+        .header(UserAgent("hyper/0.9.10".to_owned()))
+        .send());
+    let mut text = String::new();
+    try!(res.read_to_string(&mut text));
+    Ok(text)
+}
+
+fn convert_markdown_fallback(content: &str) -> String {
+    ::markdown::to_html(content)
+}
+
+pub fn markdown_to_html(input: &str) -> String {
+    match convert_markdown_github(input) {
+        Ok(res) => res,
+        Err(why) => {
+            warn!("Error when converting Markdown with Github API: {}", why);
+            convert_markdown_fallback(input)
         }
     }
 }

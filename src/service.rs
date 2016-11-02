@@ -7,15 +7,10 @@ use pwhash::bcrypt;
 
 use auth::TokenMaker;
 use util::JsonResponse;
+use model::{CreateUserRequest, CreatePostRequest, Post};
 
 pub struct UserService<'a> {
     connection: &'a PgConnection,
-}
-
-#[derive(Deserialize)]
-pub struct CreateUserRequest {
-    pub name: String,
-    pub password: String,
 }
 
 impl<'a> UserService<'a> {
@@ -57,5 +52,21 @@ impl<'a> UserService<'a> {
         };
         let result = diesel::insert(&user).into(users::table).get_result::<User>(self.connection).map_err(From::from);
         JsonResponse::from_result(result)
+    }
+}
+
+pub struct PostService<'a> {
+    connection: &'a PgConnection
+}
+
+impl<'a> PostService<'a> {
+    pub fn new(connection: &'a PgConnection) -> PostService<'a> {
+        PostService {
+            connection: connection
+        }
+    }
+
+    pub fn insert_post(&self, request: CreatePostRequest) -> JsonResponse<Post, Error> {
+        unimplemented!()
     }
 }

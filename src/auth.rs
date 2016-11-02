@@ -9,7 +9,7 @@ const DEFAULT_EXPIRATION_TIME: u64 = 24 * 60 * 60;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UserCredentials {
-    pub user: String,
+    pub name: String,
     pub password: String
 }
 
@@ -37,9 +37,9 @@ impl TokenMaker {
                 sub: Some(user_id.to_owned()),
                 exp: Some(now + self.expiration_time),
                 nbf: Some(now),
-                ..Default::default()
+                .. Default::default()
             },
-            ..Default::default()
+            .. Default::default()
         };
         let token = Token::new(header, claims);
         token.signed(self.server_secret.as_ref(), Sha256::new()).ok()
@@ -47,6 +47,22 @@ impl TokenMaker {
 }
 
 pub struct JwtToken(pub Option<Token<Header, Claims>>);
+
+impl JwtToken {
+    pub fn is_authenticated(&self, user_id: &str) -> bool {
+        match *self {
+            JwtToken(Some(ref token)) => {
+                match token.claims.reg.sub {
+                    Some(ref sub) => sub == user_id,
+                    None => false
+                }
+            }
+            JwtToken(None) => {
+                false
+            }
+        }
+    }
+}
 
 impl Key for JwtToken {
     type Value = JwtToken;
@@ -118,7 +134,7 @@ impl BeforeMiddleware for JwtMiddleware {
         Ok(())
     }
 
-    fn catch(&self, request: &mut Request, err: IronError) -> IronResult<()> {
+    fn catch(&self, _: &mut Request, _: IronError) -> IronResult<()> {
         Ok(())
     }
 }
