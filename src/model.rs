@@ -11,7 +11,7 @@ pub struct Post {
     pub owner_id: i32,
     pub tags: Vec<String>,
 }
-    
+
 #[derive(PartialEq, Eq, Debug, Clone, Queryable, Identifiable, Insertable, Serialize, Deserialize)]
 #[has_many(posts)]
 #[table_name = "users"]

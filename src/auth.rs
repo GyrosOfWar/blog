@@ -10,7 +10,7 @@ const DEFAULT_EXPIRATION_TIME: u64 = 24 * 60 * 60;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UserCredentials {
     pub name: String,
-    pub password: String
+    pub password: String,
 }
 
 pub struct TokenMaker {
@@ -37,9 +37,9 @@ impl TokenMaker {
                 sub: Some(user_id.to_owned()),
                 exp: Some(now + self.expiration_time),
                 nbf: Some(now),
-                .. Default::default()
+                ..Default::default()
             },
-            .. Default::default()
+            ..Default::default()
         };
         let token = Token::new(header, claims);
         token.signed(self.server_secret.as_ref(), Sha256::new()).ok()
@@ -54,12 +54,10 @@ impl JwtToken {
             JwtToken(Some(ref token)) => {
                 match token.claims.reg.sub {
                     Some(ref sub) => sub == user_id,
-                    None => false
+                    None => false,
                 }
             }
-            JwtToken(None) => {
-                false
-            }
+            JwtToken(None) => false,
         }
     }
 }

@@ -51,6 +51,10 @@ quick_error! {
         CreateToken {
             description("Could not create token")
         }
+
+        Other(payload: String) {
+            description(payload)
+        }
     }
 }
 

@@ -67,7 +67,9 @@ fn main() {
         let mut chain = Chain::new(PostController::add_post);
         chain.link_before(auth);
         router.post("/api/user/:user_id/post", chain, "add_post");
-        router.get("/api/user/:user_id/post/:post_id", PostController::get_post, "get_post");
+        router.get("/api/user/:user_id/post/:post_id",
+                   PostController::get_post,
+                   "get_post");
         router.post("/api/token", UserController::make_jwt_token, "get_token");
         router.post("/api/user", UserController::create_user, "add_user");
         router

@@ -3,6 +3,7 @@ use std::error::Error as StdError;
 use std::io::Read;
 
 use iron::{IronResult, Response, status};
+use iron::status::Status;
 use serde_json;
 use serde::Serialize;
 use hyper::Client;
@@ -61,6 +62,10 @@ impl<T, E> JsonResponse<T, E>
     where T: Serialize,
           E: StdError + Serialize
 {
+    pub fn from_error(error: E) -> JsonResponse<(), E> {
+        JsonResponse::Error(error)
+    }
+
     pub fn from_result(result: ::std::result::Result<T, E>) -> JsonResponse<T, E> {
         match result {
             Ok(v) => JsonResponse::Result(v),
@@ -68,11 +73,12 @@ impl<T, E> JsonResponse<T, E>
         }
     }
 
-    pub fn to_iron_result(self) -> IronResult<Response> {
+    pub fn into_iron_result(self, ok_status: Status, err_status: Status) -> IronResult<Response> {
         use self::JsonResponse::*;
+        let json = serde_json::to_string(&self).unwrap();
         match self {
-            Result(t) => Ok(Response::with((status::Ok, serde_json::to_string(&t).unwrap()))),
-            Error(why) => Ok(Response::with((status::BadRequest, format!("Error: {}", why))))
+            Result(_) => Ok(Response::with((ok_status, json))),
+            Error(_) => Ok(Response::with((err_status, json))),
         }
     }
 }
