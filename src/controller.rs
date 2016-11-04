@@ -16,7 +16,7 @@ use model::{CreateUserRequest, CreatePostRequest};
 use serde_json;
 use util::{JsonResponse, markdown_to_html};
 
-const MAX_QUERY_LEN: usize = 50;
+const MAX_QUERY_LEN: i64 = 50;
 
 macro_rules! jtry {
     ($result:expr) => (jtry!($result, status::BadRequest));
@@ -117,11 +117,11 @@ impl PostController {
         let params = jexpect!(req.extensions.get::<UrlEncodedQuery>());
         let offset = params.get("offset")
             .and_then(|v| v.get(0))
-            .and_then(|s| s.parse::<usize>().ok())
+            .and_then(|s| s.parse::<i64>().ok())
             .unwrap_or(0);
         let count = params.get("count")
             .and_then(|v| v.get(0))
-            .and_then(|s| s.parse::<usize>().ok())
+            .and_then(|s| s.parse::<i64>().ok())
             .unwrap_or(25);
         let count = cmp::min(count, MAX_QUERY_LEN);
         let user_id = jexpect!(req.extensions.get::<Router>().unwrap().find("user_id"));

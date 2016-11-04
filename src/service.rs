@@ -92,9 +92,15 @@ impl<'a> PostService<'a> {
 
     pub fn find_page(&self,
                      user_id: i32,
-                     offset: usize,
-                     limit: usize)
+                     offset: i64,
+                     limit: i64)
                      -> JsonResponse<Vec<Post>, Error> {
-        unimplemented!()
+        use schema::posts::dsl::*;
+        let result = posts.filter(owner_id.eq(user_id))
+            .offset(offset)
+            .limit(limit)
+            .load(self.connection)
+            .map_err(From::from);
+        JsonResponse::from(result)
     }
 }
