@@ -6,6 +6,7 @@ use hyper;
 use std::error::Error as StdError;
 use diesel;
 use serde_json;
+use urlencoded;
 
 use serde::{Serialize, Serializer};
 
@@ -55,6 +56,12 @@ quick_error! {
         }
 
         Parse(err: num::ParseIntError) {
+            cause(err)
+            from()
+            description(err.description())
+        }
+        
+        UrlDecode(err: urlencoded::UrlDecodingError) {
             cause(err)
             from()
             description(err.description())

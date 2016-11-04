@@ -1,11 +1,13 @@
 use std::io::Read;
 use std::fmt::Debug;
+use std::cmp;
 
 use iron::prelude::*;
 use iron::status;
 use iron_diesel_middleware::DieselReqExt;
 use serde::Deserialize;
 use router::Router;
+use urlencoded::UrlEncodedQuery;
 
 use service::{UserService, PostService};
 use errors::*;
@@ -13,6 +15,8 @@ use auth::{UserCredentials, JwtToken};
 use model::{CreateUserRequest, CreatePostRequest};
 use serde_json;
 use util::{JsonResponse, markdown_to_html};
+
+const MAX_QUERY_LEN: usize = 50;
 
 macro_rules! jtry {
     ($result:expr) => (jtry!($result, status::BadRequest));
@@ -56,10 +60,7 @@ impl UserController {
         let conn = req.db_conn();
         let service = UserService::new(&*conn);
         match read_json_body::<UserCredentials>(req) {
-            Ok(creds) => {
-                service.make_token(&creds.name, &creds.password, super::SECRET)
-                    .into_iron_result(status::Ok, status::BadRequest)
-            }
+            Ok(creds) => service.make_token(&creds.name, &creds.password, super::SECRET).into(),
             Err(why) => {
                 JsonResponse::Error::<(), _>(why)
                     .into_iron_result(status::Created, status::BadRequest)
@@ -110,5 +111,23 @@ impl PostController {
             JsonResponse::Error::<(), _>(Error::Other(String::from("Invalid credentials")))
                 .into_iron_result(status::Created, status::Unauthorized)
         }
+    }
+
+    pub fn get_posts(req: &mut Request) -> IronResult<Response> {
+        let params = jexpect!(req.extensions.get::<UrlEncodedQuery>());
+        let offset = params.get("offset")
+            .and_then(|v| v.get(0))
+            .and_then(|s| s.parse::<usize>().ok())
+            .unwrap_or(0);
+        let count = params.get("count")
+            .and_then(|v| v.get(0))
+            .and_then(|s| s.parse::<usize>().ok())
+            .unwrap_or(25);
+        let count = cmp::min(count, MAX_QUERY_LEN);
+        let user_id = jexpect!(req.extensions.get::<Router>().unwrap().find("user_id"));
+        let user_id = jtry!(user_id.parse().map_err(Error::from));
+        let conn = req.db_conn();
+        let service = PostService::new(&*conn);
+        service.find_page(user_id, offset, offset + count).into()
     }
 }

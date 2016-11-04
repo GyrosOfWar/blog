@@ -7,8 +7,6 @@ extern crate serde_derive;
 extern crate quick_error;
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate lazy_static;
 
 extern crate env_logger;
 extern crate dotenv;
@@ -21,7 +19,6 @@ extern crate diesel_codegen;
 extern crate r2d2;
 extern crate r2d2_diesel;
 
-extern crate itertools;
 extern crate chrono;
 extern crate serde;
 extern crate serde_json;
@@ -39,6 +36,7 @@ extern crate persistent;
 extern crate jwt;
 extern crate crypto;
 extern crate pwhash;
+extern crate urlencoded;
 
 mod model;
 mod util;
@@ -70,6 +68,9 @@ fn main() {
         router.get("/api/user/:user_id/post/:post_id",
                    PostController::get_post,
                    "get_post");
+        router.get("/api/user/:user_id/post",
+                   PostController::get_posts,
+                   "get_posts");
         router.post("/api/token", UserController::make_jwt_token, "get_token");
         router.post("/api/user", UserController::create_user, "add_user");
         router

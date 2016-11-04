@@ -86,7 +86,7 @@ impl<T, E> From<::std::result::Result<T, E>> for JsonResponse<T, E>
 
 impl<T, E> Into<IronResult<Response>> for JsonResponse<T, E>
     where T: Serialize,
-          E: StdError + Serialize 
+          E: StdError + Serialize
 {
     fn into(self) -> IronResult<Response> {
         use self::JsonResponse::*;

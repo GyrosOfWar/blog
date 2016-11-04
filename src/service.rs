@@ -89,4 +89,12 @@ impl<'a> PostService<'a> {
             .map_err(From::from);
         JsonResponse::from(result)
     }
+
+    pub fn find_page(&self,
+                     user_id: i32,
+                     offset: usize,
+                     limit: usize)
+                     -> JsonResponse<Vec<Post>, Error> {
+        unimplemented!()
+    }
 }
