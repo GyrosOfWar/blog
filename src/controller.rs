@@ -7,7 +7,6 @@ use iron::status;
 use iron_diesel_middleware::DieselReqExt;
 use serde::Deserialize;
 use router::Router;
-use urlencoded::UrlEncodedQuery;
 
 use service::{UserService, PostService};
 use errors::*;
@@ -15,6 +14,7 @@ use auth::{UserCredentials, JwtToken};
 use model::{CreateUserRequest, CreatePostRequest};
 use serde_json;
 use util::{JsonResponse, markdown_to_html};
+use req_ext::*;
 
 const MAX_QUERY_LEN: i64 = 50;
 
@@ -24,7 +24,7 @@ macro_rules! jtry {
     ($result:expr, $err_status:expr) => (match $result {
         ::std::result::Result::Ok(val) => val,
         ::std::result::Result::Err(why) => {
-            let resp: JsonResponse<(), _> = JsonResponse::Error(why);
+            let resp: JsonResponse<(), _> = JsonResponse::Error(Error::from(why));
             return resp.into_iron_result(status::Ok, $err_status)
         }
     })
@@ -114,19 +114,12 @@ impl PostController {
     }
 
     pub fn get_posts(req: &mut Request) -> IronResult<Response> {
-        let params = jexpect!(req.extensions.get::<UrlEncodedQuery>());
-        let offset = params.get("offset")
-            .and_then(|v| v.get(0))
-            .and_then(|s| s.parse::<i64>().ok())
-            .unwrap_or(0);
-        let count = params.get("count")
-            .and_then(|v| v.get(0))
-            .and_then(|s| s.parse::<i64>().ok())
-            .unwrap_or(25);
-        let count = cmp::min(count, MAX_QUERY_LEN);
-        let user_id = jexpect!(req.extensions.get::<Router>().unwrap().find("user_id"));
-        let user_id = jtry!(user_id.parse().map_err(Error::from));
+        let user_id: i32 = iexpect!(req.path_param("user_id"));
         let conn = req.db_conn();
+        let count = req.url_param("count").unwrap_or(25);
+        let offset = req.url_param("offset").unwrap_or(0);
+        debug!("Offset: {}, count: {}", offset, count);
+        let count = cmp::min(count, MAX_QUERY_LEN);
         let service = PostService::new(&*conn);
         service.find_page(user_id, offset, offset + count).into()
     }

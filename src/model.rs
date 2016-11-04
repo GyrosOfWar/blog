@@ -39,25 +39,3 @@ pub struct CreateUserRequest {
     pub name: String,
     pub password: String,
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json;
-
-    #[test]
-    fn serialize_user() {
-        let user = User {
-            name: "martin".into(),
-            pw_hash: "test".into(),
-            posts: vec![],
-            id: 1,
-        };
-        let json = serde_json::to_string(&user).unwrap();
-
-        let user_de: User = serde_json::from_str(&json).unwrap();
-        assert_eq!(user_de.name, String::from("martin"));
-        assert_eq!(user_de.pw_hash, String::from(""));
-        assert_eq!(user_de.id, 1);
-    }
-}

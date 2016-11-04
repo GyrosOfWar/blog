@@ -46,6 +46,7 @@ mod schema;
 mod auth;
 mod service;
 mod controller;
+mod req_ext;
 
 use std::env;
 

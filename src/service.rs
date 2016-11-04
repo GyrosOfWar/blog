@@ -96,6 +96,7 @@ impl<'a> PostService<'a> {
                      limit: i64)
                      -> JsonResponse<Vec<Post>, Error> {
         use schema::posts::dsl::*;
+        debug!("Offset: {}, limit: {}", offset, limit);
         let result = posts.filter(owner_id.eq(user_id))
             .offset(offset)
             .limit(limit)

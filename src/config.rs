@@ -1,3 +1,5 @@
+#![allow(unused, dead_code)]
+
 use std::sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Ordering};
 use std::env;
 use std::fs::File;
