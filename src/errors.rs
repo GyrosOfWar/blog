@@ -1,3 +1,5 @@
+use std::num;
+
 use r2d2;
 use std::io;
 use hyper;
@@ -50,6 +52,12 @@ quick_error! {
 
         CreateToken {
             description("Could not create token")
+        }
+
+        Parse(err: num::ParseIntError) {
+            cause(err)
+            from()
+            description(err.description())
         }
 
         Other(payload: String) {

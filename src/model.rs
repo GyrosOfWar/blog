@@ -34,7 +34,7 @@ pub struct CreatePostRequest {
     pub created_on: DateTime<UTC>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct CreateUserRequest {
     pub name: String,
     pub password: String,

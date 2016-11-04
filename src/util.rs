@@ -62,23 +62,38 @@ impl<T, E> JsonResponse<T, E>
     where T: Serialize,
           E: StdError + Serialize
 {
-    pub fn from_error(error: E) -> JsonResponse<(), E> {
-        JsonResponse::Error(error)
-    }
-
-    pub fn from_result(result: ::std::result::Result<T, E>) -> JsonResponse<T, E> {
-        match result {
-            Ok(v) => JsonResponse::Result(v),
-            Err(e) => JsonResponse::Error(e),
-        }
-    }
-
     pub fn into_iron_result(self, ok_status: Status, err_status: Status) -> IronResult<Response> {
         use self::JsonResponse::*;
         let json = serde_json::to_string(&self).unwrap();
         match self {
             Result(_) => Ok(Response::with((ok_status, json))),
             Error(_) => Ok(Response::with((err_status, json))),
+        }
+    }
+}
+
+impl<T, E> From<::std::result::Result<T, E>> for JsonResponse<T, E>
+    where T: Serialize,
+          E: StdError + Serialize
+{
+    fn from(result: ::std::result::Result<T, E>) -> JsonResponse<T, E> {
+        match result {
+            Ok(v) => JsonResponse::Result(v),
+            Err(e) => JsonResponse::Error(e),
+        }
+    }
+}
+
+impl<T, E> Into<IronResult<Response>> for JsonResponse<T, E>
+    where T: Serialize,
+          E: StdError + Serialize 
+{
+    fn into(self) -> IronResult<Response> {
+        use self::JsonResponse::*;
+        let json = serde_json::to_string(&self).unwrap();
+        match self {
+            Result(_) => Ok(Response::with((status::Ok, json))),
+            Error(_) => Ok(Response::with((status::BadRequest, json))),
         }
     }
 }

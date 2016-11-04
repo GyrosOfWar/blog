@@ -20,7 +20,7 @@ impl<'a> UserService<'a> {
 
     pub fn find_one(&self, user_id: i32) -> JsonResponse<User, Error> {
         use schema::users::dsl::*;
-        JsonResponse::from_result(users.filter(id.eq(user_id))
+        JsonResponse::from(users.filter(id.eq(user_id))
             .first::<User>(self.connection)
             .map_err(From::from))
     }
@@ -43,7 +43,7 @@ impl<'a> UserService<'a> {
                     Err(Error::InvalidCredentials)
                 }
             });
-        JsonResponse::from_result(result)
+        JsonResponse::from(result)
     }
 
     pub fn create_user(&self, request: CreateUserRequest) -> JsonResponse<User, Error> {
@@ -58,7 +58,7 @@ impl<'a> UserService<'a> {
             .into(users::table)
             .get_result::<User>(self.connection)
             .map_err(From::from);
-        JsonResponse::from_result(result)
+        JsonResponse::from(result)
     }
 }
 
@@ -72,6 +72,21 @@ impl<'a> PostService<'a> {
     }
 
     pub fn insert_post(&self, request: CreatePostRequest) -> JsonResponse<Post, Error> {
-        unimplemented!()
+        use schema::posts;
+
+        let result = diesel::insert(&request)
+            .into(posts::table)
+            .get_result::<Post>(self.connection)
+            .map_err(From::from);
+        JsonResponse::from(result)
+    }
+
+    pub fn find_one(&self, post_id: i32, user_id: i32) -> JsonResponse<Post, Error> {
+        use schema::posts::dsl::*;
+        let result = posts.filter(id.eq(post_id))
+            .filter(owner_id.eq(user_id))
+            .first(self.connection)
+            .map_err(From::from);
+        JsonResponse::from(result)
     }
 }
