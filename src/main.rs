@@ -64,8 +64,11 @@ fn main() {
         let auth = auth::JwtMiddleware::new(SECRET);
         let mut router = Router::new();
         let mut chain = Chain::new(PostController::add_post);
-        chain.link_before(auth);
+        chain.link_before(auth.clone());
         router.post("/api/user/:user_id/post", chain, "add_post");
+        let mut chain = Chain::new(UserController::get_user);
+        chain.link_before(auth);
+        router.get("/api/user/:user_id", chain, "get_user");
         router.get("/api/user/:user_id/post/:post_id",
                    PostController::get_post,
                    "get_post");

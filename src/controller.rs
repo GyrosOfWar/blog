@@ -82,6 +82,20 @@ impl UserController {
             }
         }
     }
+
+    pub fn get_user(req: &mut Request) -> IronResult<Response> {
+        let user_id = jexpect!(req.path_param("user_id"));
+        let token = jexpect!(req.extensions.get::<JwtToken>());
+        if token.is_authenticated(user_id) {
+            let conn = req.db_conn();
+            let service = UserService::new(&*conn);
+            service.find_one(user_id).into()
+        } else {
+           JsonResponse::Error::<(), _>(Error::Other(String::from("Invalid credentials")))
+                .into_iron_result(status::Created, status::Unauthorized)
+        }
+
+    }
 }
 
 pub struct PostController;
@@ -100,7 +114,8 @@ impl PostController {
     pub fn add_post(req: &mut Request) -> IronResult<Response> {
         let mut create_request: CreatePostRequest = jtry!(read_json_body(req));
         create_request.content = markdown_to_html(&create_request.content);
-        let user_id = jexpect!(req.extensions.get::<Router>().unwrap().find("user_id"));
+        //let user_id = jexpect!(req.extensions.get::<Router>().unwrap().find("user_id"));
+        let user_id = jexpect!(req.path_param("user_id"));
         let token = jexpect!(req.extensions.get::<JwtToken>());
         if token.is_authenticated(user_id) {
             let conn = req.db_conn();

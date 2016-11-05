@@ -49,11 +49,16 @@ impl TokenMaker {
 pub struct JwtToken(pub Option<Token<Header, Claims>>);
 
 impl JwtToken {
-    pub fn is_authenticated(&self, user_id: &str) -> bool {
+    pub fn is_authenticated(&self, user_id: i32) -> bool {
         match *self {
             JwtToken(Some(ref token)) => {
                 match token.claims.reg.sub {
-                    Some(ref sub) => sub == user_id,
+                    Some(ref sub) => {
+                        match sub.parse::<i32>().ok() {
+                            Some(parsed) => parsed == user_id,
+                            None => false
+                        }
+                    },
                     None => false,
                 }
             }
