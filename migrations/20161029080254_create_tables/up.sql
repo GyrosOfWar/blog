@@ -15,7 +15,8 @@ CREATE TABLE posts (
     id SERIAL PRIMARY KEY,
     created_on TIMESTAMP WITH TIME ZONE NOT NULL,
     owner_id INTEGER REFERENCES users (id) NOT NULL,
-    tags VARCHAR[] NOT NULL DEFAULT '{}'
+    tags VARCHAR[] NOT NULL DEFAULT '{}',
+    published BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- CREATE TABLE posts_tags (

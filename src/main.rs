@@ -1,5 +1,4 @@
-#![feature(proc_macro, plugin)]
-#![plugin(clippy)]
+#![feature(proc_macro)]
 
 #[macro_use]
 extern crate serde_derive;
@@ -60,6 +59,7 @@ pub const SECRET: &'static [u8] = b"I LOVE FOOD";
 
 fn main() {
     config::configure_logger();
+    // TODO add PUT for editing posts
     let router = {
         let auth = auth::JwtMiddleware::new(SECRET);
         let mut router = Router::new();

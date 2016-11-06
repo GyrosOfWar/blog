@@ -10,6 +10,7 @@ pub struct Post {
     pub created_on: DateTime<UTC>,
     pub owner_id: i32,
     pub tags: Vec<String>,
+    pub published: bool,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Queryable, Identifiable, Insertable, Serialize, Deserialize)]
@@ -32,6 +33,7 @@ pub struct CreatePostRequest {
     pub owner_id: i32,
     #[serde(default = "UTC::now")]
     pub created_on: DateTime<UTC>,
+    pub published: bool,
 }
 
 #[derive(Deserialize, Debug)]

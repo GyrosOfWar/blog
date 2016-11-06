@@ -32,7 +32,6 @@ jwt = "0.4"
 rust-crypto = "0.2"
 pwhash = "0.1"
 
-clippy = "*"
 
 [dependencies.iron_diesel_middleware]
 git = "https://github.com/darayus/iron-diesel-middleware"
