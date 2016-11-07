@@ -4,6 +4,7 @@ use std::cmp;
 
 use iron::prelude::*;
 use iron::status;
+use iron::status::Status;
 use iron_diesel_middleware::DieselReqExt;
 use serde::Deserialize;
 use router::Router;
@@ -11,7 +12,7 @@ use router::Router;
 use service::{UserService, PostService};
 use errors::*;
 use auth::{UserCredentials, JwtToken};
-use model::{CreateUserRequest, CreatePostRequest};
+use model::{CreateUserRequest, CreatePostRequest, Post};
 use serde_json;
 use util::{JsonResponse, markdown_to_html};
 use req_ext::*;
@@ -53,6 +54,11 @@ fn read_json_body<T>(req: &mut Request) -> Result<T>
     res
 }
 
+fn error(msg: &str, status: Status) -> IronResult<Response> {
+    JsonResponse::Error::<(), _>(Error::Other(String::from(msg)))
+        .into_iron_result(status::Created, status)
+}
+
 pub struct UserController;
 
 impl UserController {
@@ -77,8 +83,10 @@ impl UserController {
                 service.create_user(req).into_iron_result(status::Created, status::BadRequest)
             }
             Err(why) => {
-                JsonResponse::Error::<(), _>(why)
-                    .into_iron_result(status::Created, status::BadRequest)
+                let err = format!("{}", why);
+                error(&err, status::BadRequest)
+//                JsonResponse::Error::<(), _>(why)
+//                    .into_iron_result(status::Created, status::BadRequest)
             }
         }
     }
@@ -91,10 +99,26 @@ impl UserController {
             let service = UserService::new(&*conn);
             service.find_one(user_id).into()
         } else {
-           JsonResponse::Error::<(), _>(Error::Other(String::from("Invalid credentials")))
-                .into_iron_result(status::Created, status::Unauthorized)
+            error("Invalid credentials", status::Unauthorized)
         }
+    }
 
+    pub fn edit_post(req: &mut Request) -> IronResult<Response> {
+        let user_id: i32 = jexpect!(req.path_param("user_id"));
+        let post_id: i32 = jexpect!(req.path_param("post_id"));
+        let post: Post = jtry!(read_json_body(req));
+        let conn = req.db_conn();
+        let token = jexpect!(req.extensions.get::<JwtToken>());
+        if token.is_authenticated(user_id) {
+            if post_id != post.id || user_id != post.owner_id {
+                error("Wrong owner or post id!", status::Forbidden)
+            } else {
+                let service = PostService::new(&*conn);
+                service.update_post(post).into()
+            }
+        } else {
+            error("Invalid credentials", status::Unauthorized)
+        }
     }
 }
 

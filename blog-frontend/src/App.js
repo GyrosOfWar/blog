@@ -1,17 +1,39 @@
 import React, { Component } from 'react'
 import $ from 'jquery'
 import { FormGroup, ControlLabel, FormControl, Button } from 'react-bootstrap'
+import { Router, Route, Link, browserHistory } from 'react-router'
 const jwtDecode = require('jwt-decode')
 
-class BlogEntry extends Component {
+class BlogListEntry extends Component {
   render() {
     const entry = this.props.entry
-    const markup = { __html: entry.content }
     return (
-      <div className="blog-entry" dangerouslySetInnerHTML={markup}></div>
+      <li>{entry.title}</li>
     )
   }
 }
+
+const RegisterForm = React.createClass({
+  register: function () {
+
+  },
+
+  render: function () {
+    return (<div className="form">
+      <h1>Register</h1>
+      <FormGroup controlId="username">
+        <ControlLabel>Username</ControlLabel>
+        <FormControl type="text" id="username" />
+      </FormGroup>
+      <FormGroup controlId="password">
+        <ControlLabel>Password</ControlLabel>
+        <FormControl type="password" id="password" />
+      </FormGroup>
+      <Button bsStyle="primary" id="register-button" onClick={this.register}>Register</Button>
+    </div>
+    )
+  }
+})
 
 const LoginForm = React.createClass({
   render: function () {
@@ -50,6 +72,12 @@ const LoginForm = React.createClass({
         this.props.loginSuccessfulCallback(parsed);
       }
     })
+  }
+})
+
+const NotFound = React.createClass({
+  render: function () {
+    return (<h1>404 Not Found</h1>)
   }
 })
 
@@ -119,20 +147,27 @@ const App = React.createClass({
       }
       const user = this.state.user
       const items = this.state.blogPosts.map(function (entry) {
-        return (<BlogEntry entry={entry} user={user} key={entry.id} />)
+        return (<BlogListEntry entry={entry} user={user} key={entry.id} />)
       })
 
       inner = (
         <div className="content">
           <h1>Blog!</h1>
-          <div className="blog-entries">
+          <ul className="blog-entries">
             {items}
-          </div>
+          </ul>
         </div>
       )
     }
-
-    return (<div className="container">{inner}</div>)
+    return (
+      <Router>
+        <Route path="/" component={App}>
+          <Route path="login" component="LoginForm" />
+          <Route path="register" component="RegisterForm" />
+        </Route>
+        <Route path="*" component={NotFound} />
+      </Router>
+    )
   }
 })
 

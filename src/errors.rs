@@ -25,10 +25,6 @@ quick_error! {
             description(err.description())
         }
 
-        ExpectedResult {
-            description("Expected a result, got none")
-        }
-
         Hyper(err: hyper::Error) {
             cause(err)
             from()

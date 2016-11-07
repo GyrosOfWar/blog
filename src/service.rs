@@ -104,4 +104,8 @@ impl<'a> PostService<'a> {
             .map_err(From::from);
         JsonResponse::from(result)
     }
+
+    pub fn update_post(&self, post: Post) -> JsonResponse<Post, Error> {
+        JsonResponse::from(post.save_changes(self.connection).map_err(From::from))
+    }
 }

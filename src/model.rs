@@ -1,7 +1,9 @@
 use chrono::{DateTime, UTC};
 use schema::*;
+use diesel::prelude::*;
 
-#[derive(PartialEq, Eq, Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Queryable, Identifiable, Serialize, Deserialize, AsChangeset)]
+#[table_name = "posts"]
 #[belongs_to(User)]
 pub struct Post {
     pub title: String,

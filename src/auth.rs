@@ -86,16 +86,6 @@ impl JwtMiddleware {
             expiration_time: DEFAULT_EXPIRATION_TIME,
         }
     }
-
-    pub fn issuer(&mut self, issuer: &str) -> &mut JwtMiddleware {
-        self.issuer = Some(issuer.to_owned());
-        self
-    }
-
-    pub fn expiration_time(&mut self, expiration_time: u64) -> &mut JwtMiddleware {
-        self.expiration_time = expiration_time;
-        self
-    }
 }
 
 fn current_numeric_date() -> u64 {
@@ -124,7 +114,7 @@ impl BeforeMiddleware for JwtMiddleware {
                         }
                     }
                     Err(why) => {
-                        info!("Bad JWT: {:?}", why);
+                        debug!("Bad JWT: {:?}", why);
                     }
                 }
             }
@@ -133,7 +123,6 @@ impl BeforeMiddleware for JwtMiddleware {
             }
         }
         request.extensions.insert::<JwtToken>(JwtToken(None));
-
         Ok(())
     }
 
