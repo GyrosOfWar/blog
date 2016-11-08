@@ -6,7 +6,7 @@ use diesel::pg::PgConnection;
 use pwhash::bcrypt;
 
 use auth::TokenMaker;
-use util::JsonResponse;
+use util::{JsonResponse, Page};
 use model::{CreateUserRequest, CreatePostRequest, Post};
 
 pub struct UserService<'a> {
@@ -92,15 +92,19 @@ impl<'a> PostService<'a> {
 
     pub fn find_page(&self,
                      user_id: i32,
-                     offset: i64,
-                     limit: i64)
-                     -> JsonResponse<Vec<Post>, Error> {
+                     page_num: i64,
+                     page_size: i64)
+                     -> JsonResponse<Page<Post>, Error> {
         use schema::posts::dsl::*;
-        debug!("Offset: {}, limit: {}", offset, limit);
+
+        let offset = page_num * page_size;
+        let limit = offset + page_size;
+
         let result = posts.filter(owner_id.eq(user_id))
             .offset(offset)
             .limit(limit)
             .load(self.connection)
+            .and_then(|v| Ok(Page::new(v, page_num, 0, page_size)))
             .map_err(From::from);
         JsonResponse::from(result)
     }

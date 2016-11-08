@@ -1,11 +1,12 @@
 use std::time::Duration;
 use std::error::Error as StdError;
 use std::io::Read;
+use std::fmt;
 
 use iron::{IronResult, Response, status};
 use iron::status::Status;
 use serde_json;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use hyper::Client;
 use hyper::mime::Mime;
 use hyper::header::{ContentType, UserAgent};
@@ -104,7 +105,7 @@ fn convert_markdown_github(content: &str) -> Result<String> {
     let mut res = try!(client.post("https://api.github.com/markdown/raw")
         .body(content)
         .header(ContentType(mime))
-        .header(UserAgent("hyper/0.9.10".to_owned()))
+        .header(UserAgent("hyper/0.9.11".to_owned()))
         .send());
     let mut text = String::new();
     try!(res.read_to_string(&mut text));
@@ -122,5 +123,59 @@ pub fn markdown_to_html(input: &str) -> String {
             warn!("Error when converting Markdown with Github API: {}", why);
             convert_markdown_fallback(input)
         }
+    }
+}
+
+pub struct Page<T> {
+    data: Vec<T>,
+    current_page: i64,
+    num_pages: i64,
+    page_size: i64,
+}
+
+impl<T> Page<T> {
+    pub fn new(data: Vec<T>, current_page: i64, num_pages: i64, page_size: i64) -> Page<T> {
+        Page {
+            data: data,
+            current_page: current_page,
+            num_pages: num_pages,
+            page_size: page_size,
+        }
+    }
+}
+
+impl<T> fmt::Debug for Page<T>
+    where T: fmt::Debug
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("Page")
+            .field("data", &self.data)
+            .field("current_page", &self.current_page)
+            .field("num_pages", &self.num_pages)
+            .field("page_size", &self.page_size)
+            .finish()
+    }
+}
+
+impl<T> Serialize for Page<T>
+    where T: Serialize
+{
+    fn serialize<S>(&self, serializer: &mut S) -> ::std::result::Result<(), S::Error>
+        where S: Serializer
+    {
+        let mut state = try!(serializer.serialize_map(Some(1)));
+        try!(serializer.serialize_map_key(&mut state, "data"));
+        try!(serializer.serialize_map_value(&mut state, &self.data));
+
+        try!(serializer.serialize_map_key(&mut state, "current_page"));
+        try!(serializer.serialize_map_value(&mut state, &self.current_page));
+
+        try!(serializer.serialize_map_key(&mut state, "num_pages"));
+        try!(serializer.serialize_map_value(&mut state, &self.num_pages));
+
+        try!(serializer.serialize_map_key(&mut state, "page_size"));
+        try!(serializer.serialize_map_value(&mut state, &self.page_size));
+
+        serializer.serialize_map_end(state)
     }
 }

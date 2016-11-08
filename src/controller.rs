@@ -7,7 +7,6 @@ use iron::status;
 use iron::status::Status;
 use iron_diesel_middleware::DieselReqExt;
 use serde::Deserialize;
-use router::Router;
 
 use service::{UserService, PostService};
 use errors::*;
@@ -67,10 +66,7 @@ impl UserController {
         let service = UserService::new(&*conn);
         match read_json_body::<UserCredentials>(req) {
             Ok(creds) => service.make_token(&creds.name, &creds.password, super::SECRET).into(),
-            Err(why) => {
-                JsonResponse::Error::<(), _>(why)
-                    .into_iron_result(status::Created, status::BadRequest)
-            }
+            Err(why) => error(&format!("{}", why), status::BadRequest),
         }
     }
 
@@ -82,12 +78,7 @@ impl UserController {
             Ok(req) => {
                 service.create_user(req).into_iron_result(status::Created, status::BadRequest)
             }
-            Err(why) => {
-                let err = format!("{}", why);
-                error(&err, status::BadRequest)
-//                JsonResponse::Error::<(), _>(why)
-//                    .into_iron_result(status::Created, status::BadRequest)
-            }
+            Err(why) => error(&format!("{}", why), status::BadRequest),
         }
     }
 
@@ -128,17 +119,14 @@ impl PostController {
     pub fn get_post(req: &mut Request) -> IronResult<Response> {
         let conn = req.db_conn();
         let service = PostService::new(&*conn);
-        let post_id = jexpect!(req.extensions.get::<Router>().unwrap().find("post_id"));
-        let post_id = jtry!(post_id.parse().map_err(Error::from));
-        let user_id = jexpect!(req.extensions.get::<Router>().unwrap().find("user_id"));
-        let user_id = jtry!(user_id.parse().map_err(Error::from));
+        let post_id = jexpect!(req.path_param("post_id"));
+        let user_id = jexpect!(req.path_param("user_id"));
         service.find_one(post_id, user_id).into_iron_result(status::Ok, status::BadRequest)
     }
 
     pub fn add_post(req: &mut Request) -> IronResult<Response> {
         let mut create_request: CreatePostRequest = jtry!(read_json_body(req));
         create_request.content = markdown_to_html(&create_request.content);
-        //let user_id = jexpect!(req.extensions.get::<Router>().unwrap().find("user_id"));
         let user_id = jexpect!(req.path_param("user_id"));
         let token = jexpect!(req.extensions.get::<JwtToken>());
         if token.is_authenticated(user_id) {
@@ -147,19 +135,18 @@ impl PostController {
             service.insert_post(create_request)
                 .into_iron_result(status::Created, status::InternalServerError)
         } else {
-            JsonResponse::Error::<(), _>(Error::Other(String::from("Invalid credentials")))
-                .into_iron_result(status::Created, status::Unauthorized)
+            error("Invalid credentials", status::Unauthorized)
         }
     }
 
     pub fn get_posts(req: &mut Request) -> IronResult<Response> {
         let user_id: i32 = iexpect!(req.path_param("user_id"));
         let conn = req.db_conn();
-        let count = req.url_param("count").unwrap_or(25);
-        let offset = req.url_param("offset").unwrap_or(0);
-        debug!("Offset: {}, count: {}", offset, count);
-        let count = cmp::min(count, MAX_QUERY_LEN);
+        let page_size = req.url_param("page_size").unwrap_or(25);
+        let page = req.url_param("page").unwrap_or(0);
+        debug!("Page: {}, Page size: {}", page, page_size);
+        let page_size = cmp::min(page_size, MAX_QUERY_LEN);
         let service = PostService::new(&*conn);
-        service.find_page(user_id, offset, offset + count).into()
+        service.find_page(user_id, page, page_size).into()
     }
 }
