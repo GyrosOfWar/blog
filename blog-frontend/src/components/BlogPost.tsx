@@ -1,15 +1,36 @@
 import * as React from "react";
 
 export class BlogPost {
-    title: String
-    content: String
-    id: Number
-    created_on: Date
-    owner_id: Number
-    tags: Array<String>
-    published: boolean
+    readonly title: string;
+    readonly content: string;
+    readonly id: number;
+    readonly createdOn: Date;
+    readonly ownerId: number;
+    readonly tags: Array<string>;
+
+    constructor (title: string, content: string, id: number, createdOn: Date, ownerId: number, tags: Array<string>) {
+        this.title = title;
+        this.content = content;
+        this.id = id;
+        this.createdOn = createdOn;
+        this.ownerId = ownerId;
+        this.tags = tags;
+    }
 }
 
 export interface BlogPostProps {
     post: BlogPost
+}
+
+export class BlogPostView extends React.Component<BlogPostProps, {}> {
+    render(): JSX.Element {
+        const post = this.props.post;
+        const htmlContent = {__html: post.content};
+        return (
+            <div>
+                <h1>{post.title}</h1>
+                <p dangerouslySetInnerHTML={htmlContent} />
+            </div>
+        );
+    }
 }

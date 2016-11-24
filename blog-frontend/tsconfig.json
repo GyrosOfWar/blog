@@ -9,7 +9,7 @@
     "strictNullChecks": true
   },
   "files": [
-    "./src/components/App.tsx",
+    "./src/components/BlogPost.tsx",
     "./src/index.tsx"
   ]
 }
