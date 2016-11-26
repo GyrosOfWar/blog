@@ -8,8 +8,11 @@
     "jsx": "react",
     "strictNullChecks": true
   },
-  "files": [
-    "./src/components/BlogPost.tsx",
-    "./src/index.tsx"
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.spec.ts"
   ]
 }

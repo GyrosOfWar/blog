@@ -4,21 +4,23 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "webpack-dev-server -d --inline --hot --port 9090"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@types/react": "^0.14.50",
-    "@types/react-bootstrap": "0.0.37",
     "@types/react-dom": "^0.14.19",
     "@types/react-router": "^2.0.39",
+    "jwt-decode": "^2.1.0",
     "react": "^15.4.1",
-    "react-dom": "^15.4.1"
+    "react-dom": "^15.4.1",
+    "react-router": "^3.0.0"
   },
   "devDependencies": {
     "source-map-loader": "^0.1.5",
     "ts-loader": "^1.2.2",
+    "typescript": "^2.0.10",
     "webpack": "^1.13.3",
     "webpack-dev-server": "^1.16.2"
   }

@@ -27,10 +27,10 @@ export class BlogPostView extends React.Component<BlogPostProps, {}> {
         const post = this.props.post;
         const htmlContent = {__html: post.content};
         return (
-            <div>
+            <article>
                 <h1>{post.title}</h1>
-                <p dangerouslySetInnerHTML={htmlContent} />
-            </div>
+                <div id="blog-content" dangerouslySetInnerHTML={htmlContent} />
+            </article>
         );
     }
 }
