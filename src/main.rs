@@ -1,4 +1,4 @@
-#![feature(proc_macro)]
+#![feature(proc_macro, custom_attribute)]
 
 #[macro_use]
 extern crate serde_derive;
@@ -71,7 +71,7 @@ fn main() {
         router.get("/api/user/:user_id", chain, "get_user");
         let mut chain = Chain::new(UserController::edit_post);
         chain.link_before(auth);
-        router.put("/api/user/:user_id/:post_id", chain, "edit_post");
+        router.put("/api/user/:user_id/post/:post_id", chain, "edit_post");
         router.get("/api/user/:user_id/post/:post_id",
                    PostController::get_post,
                    "get_post");

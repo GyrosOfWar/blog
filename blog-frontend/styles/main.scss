@@ -1,0 +1,51 @@
+$font: 16px Helvetica;
+$text-color: black;
+
+body {
+    font: $font;
+}
+
+#main {
+    min-height: 800px;
+    margin: 0px;
+    padding: 0px;
+    display: flex;
+    flex-flow: row;
+}
+
+#main > article {
+    margin: 4px;
+    padding: 5px;
+    flex: 3 1 85%;
+    order: 2;
+}
+
+.tag-link {
+    text-transform: lowercase;
+    color: darkgrey;
+}
+
+code {
+    background-color: lightgray;
+}
+
+@import 'forms';
+@import 'nav';
+@import 'spinner';
+
+@media all and (max-width: 640px) {
+    #main {
+        flex-direction: column;
+    }
+    #main > article,
+    #main > nav {
+        order: 0;
+        flex: 0 0 auto;
+    }
+    #main > nav > ul {
+        padding-left: 0;
+    }
+    #main > nav {
+        min-height: 50px;
+    }
+}

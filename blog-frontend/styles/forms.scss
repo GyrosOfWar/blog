@@ -1,0 +1,38 @@
+.form {
+    margin: 4px;
+    padding: 5px;
+    display: flex;
+    flex-flow: column;
+    flex: 3 1 85%;
+    order: 1;
+    align-items: center;
+}
+
+.button {
+    color: black;
+    background-color: lightgrey;
+    padding: 10px 20px 10px 20px;
+    font-size: 16px;
+    text-decoration: none;
+    border: 1px solid black;
+}
+
+.button:hover {
+    color: white;
+    background-color: black;
+}
+
+.form-group {
+    margin: 4px;
+}
+
+.text-input {
+    width: 200px;
+    height: 1.5em;
+    font-size: 16px;
+}
+
+.form-label {
+    margin-right: 15px;
+    width: 150px;
+}
