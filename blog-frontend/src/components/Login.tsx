@@ -28,6 +28,7 @@ export class Login extends React.Component<{}, {}> {
     render(): JSX.Element {
         return (
             <form className="form" onSubmit={this.onSubmit}>
+                <h1>Login</h1>
                 <div className="form-group">
                     <label className="form-label" htmlFor="username-input">Username</label>
                     <input type="text" id="username-input" className="text-input" />

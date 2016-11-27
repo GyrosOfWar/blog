@@ -7,5 +7,6 @@
         "host": "localhost",
         "port": 5000,
         "debug": true
-    }
+    },
+    "markdown_mode": "plain"
 }

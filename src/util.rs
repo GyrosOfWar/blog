@@ -112,18 +112,20 @@ fn convert_markdown_github(content: &str) -> Result<String> {
     Ok(text)
 }
 
-fn convert_markdown_fallback(content: &str) -> String {
+fn convert_markdown_plain(content: &str) -> String {
     ::markdown::to_html(content)
 }
 
-pub fn markdown_to_html(input: &str) -> String {
-    match convert_markdown_github(input) {
-        Ok(res) => res,
-        Err(why) => {
-            warn!("Error when converting Markdown with Github API: {}", why);
-            convert_markdown_fallback(input)
-        }
+pub fn markdown_to_html(input: &str, mode: MarkdownMode) -> String {
+    match mode {
+        MarkdownMode::Github => convert_markdown_github(input).unwrap_or(convert_markdown_plain(input)),
+        MarkdownMode::Plain => convert_markdown_plain(input)
     }
+}
+
+pub enum MarkdownMode {
+    Plain,
+    Github,
 }
 
 pub struct Page<T> {

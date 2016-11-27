@@ -32,7 +32,8 @@ export class BlogPost {
 }
 
 interface State {
-    post?: BlogPost
+    post?: BlogPost,
+    error?: string
 }
 
 class Loading extends React.Component<{}, {}> {
@@ -53,18 +54,17 @@ export class BlogPostView extends React.Component<any, State> {
     }
 
     fetchPost(): void {
-        console.log("Fetching post");
-        qwest.get(`/api/user/${this.props.params.userId}/post/${this.props.params.postId}`)
-            .then((xhr, responseString) => {
-                const resp = JSON.parse(responseString);
+        qwest.get(`/api/user/${this.props.params.userId}/post/${this.props.params.postId}`, {}, {dataType: "json", responseType: "json"})
+            .then((xhr, resp) => {
                 if (resp.result) {
                     const post = BlogPost.fromJSON(resp.result);
-                    console.log("Post!");
-                    console.log(post);
                     this.setState({ post: post });
                 } else {
-                    console.log(resp.error);
+                    this.setState({error: resp.error});
                 }
+            })
+            .catch((e, xhr, resp) => {
+                this.setState({error: resp.error.description});
             })
     }
 
@@ -73,20 +73,27 @@ export class BlogPostView extends React.Component<any, State> {
     }
 
     render(): JSX.Element {
-        const post = this.state.post;
-        if (!post) {
-            return <Loading />;
+        console.log(this.state);
+        if (this.state.error) {
+            return <span>Error: {this.state.error}</span>;
         }
+        
+        if (this.state.post === undefined) {
+            return <Loading />
+        }
+
+        const post = this.state.post;
         const htmlContent = { __html: post.content };
         const tags = post.tags.map((t: string) => {
             const link = `/user/${post.ownerId}/tag/${t}`;
-            return <span><Link className="tag-link" to={link}>{t}</Link> </span>
+            return <span key={t}><Link className="tag-link" to={link}>{t}</Link> </span>
         });
         return (
             <article>
                 <header>
                     <h1>{post.title}</h1>
                 </header>
+                <p>Posted on <time>{post.createdOn}</time></p>
                 <div id="blog-content" dangerouslySetInnerHTML={htmlContent} />
                 <div className="tags">{tags}</div>
             </article>

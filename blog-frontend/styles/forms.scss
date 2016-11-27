@@ -28,8 +28,15 @@
 
 .text-input {
     width: 200px;
-    height: 1.5em;
+    height: 1.3em;
     font-size: 16px;
+    padding: 5px;
+    border: 1px solid black;
+}
+
+.text-input:active {
+    outline: none;
+    border: 1px solid blue;
 }
 
 .form-label {

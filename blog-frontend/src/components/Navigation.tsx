@@ -5,7 +5,7 @@ import { isLoggedIn } from '../auth'
 export class Navigation extends React.Component<{}, {}> {
     render(): JSX.Element {
         let log: JSX.Element;
-        if (isLoggedIn()){
+        if (isLoggedIn()) {
             log = <Link to="/logout">Logout</Link>;
         } else {
             log = <Link to="/login">Login</Link>;
@@ -14,7 +14,12 @@ export class Navigation extends React.Component<{}, {}> {
             <nav>
                 <ul>
                     <li><Link to="/">Home</Link></li>
-                    <li>{log}</li>
+                    <li>{isLoggedIn() ? (
+                        <Link to="/logout">Logout</Link>
+                    ) : (
+                        <Link to="/login">Login</Link>
+                        )
+                    }</li>
                 </ul>
             </nav>
         )

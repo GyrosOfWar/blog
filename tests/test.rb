@@ -1,15 +1,19 @@
 require 'rest-client'
 require 'json'
 
-# TODO maybe write this in Rust too
-
 API = 'http://localhost:5000/api'
 TEST_POST = {
   title: "Ruby is okay",
-  content: "# Ruby is okay\n* Some stuff is bad.\n* Some stuff is good.",
+  content: "* Some stuff is bad.\n* Some stuff is good.",
   tags: ["ruby", "programming", "opinion"],
-  owner_id: 0
+  owner_id: 0,
+  published: true
 }.to_json
+
+def register_user(username, password)
+    req = RestClient.post "#{API}/user", {name: username, password: password}.to_json
+    JSON.parse(req.body)['result']
+end
 
 def get_token(username, password)
   req = RestClient.post "#{API}/token", {name: username, password: password}.to_json
@@ -26,8 +30,5 @@ def get_page()
   JSON.parse(req.body)
 end
 
-page = get_page()['result']
-puts page.length
-
-
-
+puts register_user('martin', 'martin4817')
+puts add_post(get_token('martin','martin4817'))

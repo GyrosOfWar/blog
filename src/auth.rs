@@ -14,6 +14,8 @@ pub struct UserCredentials {
 }
 
 pub struct TokenMaker {
+    // TODO I can probably avoid an allocation here since 
+    // the middleware owns the secret.
     server_secret: Vec<u8>,
     issuer: Option<String>,
     expiration_time: u64,

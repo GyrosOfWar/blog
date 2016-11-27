@@ -13,7 +13,7 @@ use errors::*;
 use auth::{UserCredentials, JwtToken};
 use model::{CreateUserRequest, CreatePostRequest, Post};
 use serde_json;
-use util::{JsonResponse, markdown_to_html};
+use util::{JsonResponse, markdown_to_html, MarkdownMode};
 use req_ext::*;
 
 const MAX_QUERY_LEN: i64 = 50;
@@ -126,7 +126,8 @@ impl PostController {
 
     pub fn add_post(req: &mut Request) -> IronResult<Response> {
         let mut create_request: CreatePostRequest = jtry!(read_json_body(req));
-        create_request.content = markdown_to_html(&create_request.content);
+        // TODO read config for this
+        create_request.content = markdown_to_html(&create_request.content, MarkdownMode::Plain);
         let user_id = jexpect!(req.path_param("user_id"));
         let token = jexpect!(req.extensions.get::<JwtToken>());
         if token.is_authenticated(user_id) {
