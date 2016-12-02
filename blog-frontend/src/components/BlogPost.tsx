@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link } from "react-router";
-import * as qwest from 'qwest';
+import { BlogPostStore } from "../store/BlogPostStore";
 
 export class BlogPost {
     readonly title: string;
@@ -54,41 +54,42 @@ export class BlogPostView extends React.Component<any, State> {
     }
 
     fetchPost(): void {
-        qwest.get(`/api/user/${this.props.params.userId}/post/${this.props.params.postId}`, {}, {dataType: "json", responseType: "json"})
-            .then((xhr, resp) => {
-                if (resp.result) {
-                    const post = BlogPost.fromJSON(resp.result);
-                    this.setState({ post: post });
-                } else {
-                    this.setState({error: resp.error});
-                }
-            })
-            .catch((e, xhr, resp) => {
-                this.setState({error: resp.error.description});
-            })
+        console.log("fetchPost called");
+        BlogPostStore.getPost(this.props.params.userId, this.props.params.postId,
+            (post) => {
+                this.setState({ post: post });
+                console.log("Set state");
+            },
+            (e, xhr, resp) => {
+                this.setState({ error: resp.error.description })
+            }
+        );
     }
 
     componentWillMount(): void {
+        console.log("componentWillMount called");
         this.fetchPost();
     }
 
     render(): JSX.Element {
-        console.log(this.state);
+        console.log("Render called");
         if (this.state.error) {
             return <span>Error: {this.state.error}</span>;
         }
-        
-        if (this.state.post === undefined) {
+
+        if (!this.state.post) {
+            console.log("No post found, showing loading");
             return <Loading />
         }
 
         const post = this.state.post;
         const htmlContent = { __html: post.content };
-        const tags = post.tags.map((t: string) => {
-            const link = `/user/${post.ownerId}/tag/${t}`;
-            return <span key={t}><Link className="tag-link" to={link}>{t}</Link> </span>
-        });
-        return (
+        const tags = <p></p>;
+        // const tags = post.tags.map((t: string) => {
+        //     const link = `/user/${post.ownerId}/tag/${t}`;
+        //     return (<span key={t}><Link className="tag-link" to={link}>{t}</Link>&nbsp;</span>);
+        // });
+        const el = (
             <article>
                 <header>
                     <h1>{post.title}</h1>
@@ -98,5 +99,7 @@ export class BlogPostView extends React.Component<any, State> {
                 <div className="tags">{tags}</div>
             </article>
         );
+
+        return el;
     }
 }
