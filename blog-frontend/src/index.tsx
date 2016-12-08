@@ -2,14 +2,13 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { Router, Route, hashHistory, IndexRoute, Link } from 'react-router';
 
-import { BlogPostView, BlogPost } from "./components/BlogPost";
+import { BlogPostView } from "./components/BlogPost";
 import { Navigation } from "./components/Navigation";
 import { Login } from "./components/Login";
-import { logout } from "./auth";
+import { Logout } from "./components/Logout";
+import { BlogEditor }  from "./components/Editor";
 
 import "../styles/main.scss";
-
-const blogPost = new BlogPost("Test post", "Some content <p>New thing</p>", 0, new Date(), 0, ["video", "ruby", "cars"]);
 
 class App extends React.Component<{}, {}> {
     render(): JSX.Element {
@@ -30,24 +29,17 @@ class Home extends React.Component<{}, {}> {
     }
 }
 
-class Logout extends React.Component<{}, {}> {
-    componentDidMount() {
-        logout();
-    }
-
-    render(): JSX.Element {
-        return <p>You were logged out!</p>
-    }
-}
-
-ReactDOM.render(
-    <Router history={hashHistory}>
+const router = <Router history={hashHistory}>
         <Route path="/" component={App}>
             <IndexRoute component={Home} />
             <Route path="login" component={Login} />
             <Route path="logout" component={Logout} />
             <Route path="user/:userId/post/:postId" component={BlogPostView} />
+            <Route path="user/:userId/post/:postId/edit" component={BlogEditor} />
         </Route>
-    </Router>,
+    </Router>;
+
+ReactDOM.render(
+    router,
     document.getElementById("root")
 );

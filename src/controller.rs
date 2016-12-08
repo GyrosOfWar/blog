@@ -121,6 +121,7 @@ impl PostController {
         let service = PostService::new(&*conn);
         let post_id = jexpect!(req.path_param("post_id"));
         let user_id = jexpect!(req.path_param("user_id"));
+        debug!("User ID = {}, post ID = {}", user_id, post_id);
         service.find_one(post_id, user_id).into_iron_result(status::Ok, status::BadRequest)
     }
 

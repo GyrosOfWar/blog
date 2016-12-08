@@ -13,11 +13,19 @@ body {
     flex-flow: row;
 }
 
-#main > article {
+.article-container {
     margin: 4px;
     padding: 5px;
     flex: 3 1 85%;
+
+    display: flex;
     order: 2;
+    align-items: flex-start;
+    flex-flow: column;
+}
+
+.timestamp {
+    align-self: flex-end;
 }
 
 .tag-link {

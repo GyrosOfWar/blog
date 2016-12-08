@@ -4,9 +4,8 @@ import * as qwest from 'qwest';
 export class BlogPostStore {
     static readonly posts: Map<[number, number], BlogPost> = new Map();
 
-    static getPost(userId: number, postId: number, successCb: ((post: BlogPost) => any), errorCb: ((e: any, xhr?: any, response?: any) => any)) {
+    static getPost(userId: number, postId: number, successCb: ((post: BlogPost) => any), errorCb: ((message: string) => any)) {
         const entry = BlogPostStore.posts.get([userId, postId]);
-        console.log("getPost called");
         if (entry) {
             successCb(entry);
         } else {
@@ -17,10 +16,12 @@ export class BlogPostStore {
                         successCb(post);
                         BlogPostStore.posts.set([userId, postId], post);
                     } else {
-                        errorCb(null, xhr, resp || "Unknown error");
+                        errorCb(resp || "Unknown error");
                     }
                 })
-                .catch(errorCb);
+                .catch((e, xhr, resp) => {
+                    errorCb(resp.error.description as string);
+                });
         }
     }
 }
