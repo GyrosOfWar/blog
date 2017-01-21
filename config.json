@@ -1,6 +1,6 @@
 {
     "database": {
-        "url": "postgres://martin:martin4817@localhost/blog"
+        "url": "postgres://martin:test@localhost/blog"
     },
 
     "web": {
