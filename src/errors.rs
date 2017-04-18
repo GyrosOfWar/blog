@@ -1,10 +1,7 @@
-use std::num;
-
 use r2d2;
 use std::io;
 use std::error::Error as StdError;
 use diesel;
-use serde_json;
 
 use serde::{Serialize, Serializer};
 use serde::ser::SerializeMap;

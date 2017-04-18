@@ -1,20 +1,13 @@
-use std::io::{BufWriter, BufReader};
-use std::fs::File;
-use std::path::Path;
+
 use std::ops::Deref;
 
-use diesel::prelude::*;
 use diesel::pg::PgConnection;
-use diesel;
-use serde_json;
+
 use rocket::http::Status;
 use rocket::request::{self, FromRequest};
 use rocket::{Request, State, Outcome};
 use r2d2;
 use r2d2_diesel::ConnectionManager;
-
-use schema::*;
-use errors::*;
 
 pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 

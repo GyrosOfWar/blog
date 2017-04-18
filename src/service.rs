@@ -6,8 +6,7 @@ pub mod user {
     use diesel::pg::PgConnection;
     use ring_pwhash::scrypt;
 
-    use util::{JsonResponse, Page};
-    use model::{CreateUserRequest, CreatePostRequest, Post};
+    use model::CreateUserRequest;
 
     const SCRYPT_LOG_N: u8 = 14;
     const SCRYPT_R: u32 = 8;
@@ -94,7 +93,8 @@ pub mod post {
             .map_err(From::from)
     }
 
-    pub fn update_post(post: Post, conn: &PgConnection) -> JsonResponse<Post, Error> {
+    #[allow(dead_code)]
+    pub fn update_post(post: &Post, conn: &PgConnection) -> JsonResponse<Post, Error> {
         JsonResponse::from(post.save_changes(conn).map_err(From::from))
     }
 }

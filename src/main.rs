@@ -1,5 +1,6 @@
 #![feature(plugin, custom_derive, custom_attribute)]
 #![plugin(rocket_codegen, clippy)]
+#![allow(needless_pass_by_value)]
 
 #[macro_use]
 extern crate log;
@@ -38,12 +39,14 @@ mod db_util;
 
 use std::env;
 use std::collections::HashMap;
+use std::path::{PathBuf, Path};
 
 use rocket_contrib::{Template, JSON};
 use rocket::http::{Cookie, Cookies};
 use rocket::request::Form;
 use serde_json::value::ToJson;
 use ring_pwhash::scrypt;
+use rocket::response::NamedFile;
 
 use db_util::Connection;
 use model::{CreateUserRequest, CreatePostRequest, LoginRequest};
@@ -51,6 +54,7 @@ use errors::Result;
 
 pub const SECRET: &'static [u8] = b"I LOVE FOOD";
 
+#[allow(unused_variables)]
 #[get("/post/<name>/<id>")]
 fn show_post_long(id: i32, name: String, conn: Connection) -> Result<Template> {
     show_post(id, conn)
@@ -107,12 +111,17 @@ fn index() -> Template {
     Template::render("index", &0)
 }
 
+#[get("/static/<file..>")]
+fn serve_static_file(file: PathBuf) -> Result<NamedFile> {
+    NamedFile::open(Path::new("static/").join(file)).map_err(From::from)
+}
+
 #[post("/post/new", data = "<data>")]
-fn create_post(data: JSON<CreatePostRequest>,
-               conn: Connection,
-               cookies: &Cookies)
+fn create_post(mut data: JSON<CreatePostRequest>,
+               conn: Connection)
                -> Result<Template> {
 
+    data.convert_markdown();
     service::post::insert_post(data.0, &conn);
     Ok(Template::render("index", &0))
 }
@@ -124,6 +133,6 @@ fn main() {
         .manage(db_util::init_pool(&database_url))
         .mount("/",
                routes![show_post, show_post_long, show_user, new_user, login, index, create_post,
-                       do_login])
+                       do_login, serve_static_file])
         .launch()
 }

@@ -1,10 +1,9 @@
 use chrono::{DateTime, UTC};
 use schema::*;
-use diesel::prelude::*;
+use util;
 
 #[derive(PartialEq, Eq, Debug, Clone, Queryable, Identifiable, Serialize, Deserialize, AsChangeset)]
 #[table_name = "posts"]
-#[belongs_to(User)]
 pub struct Post {
     pub title: String,
     pub content: String,
@@ -16,7 +15,6 @@ pub struct Post {
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Queryable, Identifiable, Serialize, Deserialize, Insertable)]
-#[has_many(posts)]
 #[table_name = "users"]
 pub struct User {
     pub name: String,
@@ -36,6 +34,12 @@ pub struct CreatePostRequest {
     #[serde(default = "UTC::now")]
     pub created_on: DateTime<UTC>,
     pub published: bool,
+}
+
+impl CreatePostRequest {
+    pub fn convert_markdown(&mut self) {
+        self.content = util::markdown_to_html(&self.content);
+    }
 }
 
 #[derive(Deserialize, Debug, FromForm)]

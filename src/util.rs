@@ -5,7 +5,6 @@ use std::fmt;
 
 use reqwest::header::{ContentType, UserAgent};
 use reqwest::mime::Mime;
-use serde_json;
 use serde::{Serialize, Serializer};
 use serde::ser::SerializeMap;
 use errors::Result;
@@ -86,18 +85,14 @@ fn convert_markdown_plain(content: &str) -> String {
     ::markdown::to_html(content)
 }
 
-pub fn markdown_to_html(input: &str, mode: MarkdownMode) -> String {
-    match mode {
-        MarkdownMode::Github => {
-            convert_markdown_github(input).unwrap_or(convert_markdown_plain(input))
+pub fn markdown_to_html(input: &str) -> String {
+    match convert_markdown_github(input) {
+        Ok(s) => s,
+        Err(why) => {
+            warn!("Error using Github to convert Markdown: {}", why);
+            convert_markdown_plain(input)
         }
-        MarkdownMode::Plain => convert_markdown_plain(input),
     }
-}
-
-pub enum MarkdownMode {
-    Plain,
-    Github,
 }
 
 pub struct Page<T> {
