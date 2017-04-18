@@ -57,20 +57,6 @@ pub enum JsonResponse<T, E> {
     Error(E),
 }
 
-// impl<T, E> JsonResponse<T, E>
-//     where T: Serialize,
-//           E: StdError + Serialize
-// {
-//     pub fn into_iron_result(self, ok_status: Status, err_status: Status) -> IronResult<Response> {
-//         use self::JsonResponse::*;
-//         let json = serde_json::to_string(&self).unwrap();
-//         match self {
-//             Result(_) => Ok(Response::with((ok_status, json))),
-//             Error(_) => Ok(Response::with((err_status, json))),
-//         }
-//     }
-// }
-
 impl<T, E> From<::std::result::Result<T, E>> for JsonResponse<T, E>
     where T: Serialize,
           E: StdError + Serialize
@@ -102,8 +88,10 @@ fn convert_markdown_plain(content: &str) -> String {
 
 pub fn markdown_to_html(input: &str, mode: MarkdownMode) -> String {
     match mode {
-        MarkdownMode::Github => convert_markdown_github(input).unwrap_or(convert_markdown_plain(input)),
-        MarkdownMode::Plain => convert_markdown_plain(input)
+        MarkdownMode::Github => {
+            convert_markdown_github(input).unwrap_or(convert_markdown_plain(input))
+        }
+        MarkdownMode::Plain => convert_markdown_plain(input),
     }
 }
 

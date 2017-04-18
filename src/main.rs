@@ -1,5 +1,5 @@
-#![feature(plugin, custom_attribute)]
-#![plugin(rocket)]
+#![feature(plugin, custom_derive, custom_attribute)]
+#![plugin(rocket_codegen)]
 
 #[macro_use]
 extern crate log;
@@ -25,6 +25,7 @@ extern crate reqwest;
 extern crate markdown;
 
 extern crate rocket;
+extern crate rocket_contrib;
 extern crate ring_pwhash;
 
 mod model;
@@ -32,44 +33,80 @@ mod util;
 mod config;
 mod errors;
 mod schema;
-// mod auth;
 mod service;
-// mod controller;
+mod db_util;
 
 use std::env;
+use std::collections::HashMap;
+
+use rocket_contrib::{Template, JSON};
+use rocket::http::{Cookie, Cookies};
+use rocket::request::Form;
+use serde_json::value::ToJson;
+
+use db_util::Connection;
+use model::{CreateUserRequest, CreatePostRequest};
+use errors::Result;
 
 pub const SECRET: &'static [u8] = b"I LOVE FOOD";
 
+#[get("/post/<name>/<id>")]
+fn show_post_long(id: i32, name: String, conn: Connection) -> Result<Template> {
+    show_post(id, conn)
+}
+
+#[get("/post/<id>")]
+fn show_post(id: i32, conn: Connection) -> Result<Template> {
+    let post = service::post::find_one(id, &*conn)?;
+    let mut context = HashMap::new();
+    context.insert("post", post);
+    Ok(Template::render("show_post", &context))
+}
+
+#[get("/user/<id>")]
+fn show_user(id: i32, conn: Connection) -> Result<Template> {
+    let user = service::user::find_one(id, &*conn)?;
+    let posts = service::post::find_page(id, 0, 20, &*conn)?;
+    let mut context = HashMap::new();
+    context.insert("user", user.to_json()?);
+    context.insert("posts", posts.to_json()?);
+    Ok(Template::render("show_user", &context))
+}
+
+#[get("/login")]
+fn login() -> Template {
+    Template::render("login", &0)
+}
+
+#[post("/register", data = "<form>")]
+fn new_user(form: Form<CreateUserRequest>, conn: Connection) -> Result<Template> {
+    let request = form.into_inner();
+    service::user::create_user(request, &conn)?;
+
+    Ok(Template::render("index", &0))
+}
+
+#[get("/")]
+fn index() -> Template {
+    Template::render("index", &0)
+}
+
+#[post("/post/new", data = "<data>")]
+fn create_post(data: JSON<CreatePostRequest>,
+               conn: Connection,
+               cookies: &Cookies)
+               -> Result<Template> {
+    service::post::insert_post(data.0, &conn);
+    Ok(Template::render("index", &0))
+}
+
 fn main() {
     config::configure_logger();
-    // TODO add PUT for editing posts
-    // let router = {
-    //     let auth = auth::JwtMiddleware::new(SECRET);
-    //     let mut router = Router::new();
-    //     let mut chain = Chain::new(PostController::add_post);
-    //     chain.link_before(auth.clone());
-    //     router.post("/api/user/:user_id/post", chain, "add_post");
-    //     let mut chain = Chain::new(UserController::get_user);
-    //     chain.link_before(auth.clone());
-    //     router.get("/api/user/:user_id", chain, "get_user");
-    //     let mut chain = Chain::new(UserController::edit_post);
-    //     chain.link_before(auth);
-    //     router.put("/api/user/:user_id/post/:post_id", chain, "edit_post");
-    //     router.get("/api/user/:user_id/post/:post_id",
-    //                PostController::get_post,
-    //                "get_post");
-    //     router.get("/api/user/:user_id/post",
-    //                PostController::get_posts,
-    //                "get_posts");
-    //     router.post("/api/token", UserController::make_jwt_token, "get_token");
-    //     router.post("/api/user", UserController::create_user, "add_user");
-    //     router
-    // };
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
-    // let db_url = env::var("DATABASE_URL").unwrap();
-    // let diesel_middleware = DieselMiddleware::new(&db_url).unwrap();
-    // let mut chain = Chain::new(router);
-    // chain.link_before(diesel_middleware);
-    // let iron = Iron::new(chain);
-    // iron.http("localhost:5000").unwrap();
+    rocket::ignite()
+        .manage(db_util::init_pool(&database_url))
+        .mount("/",
+               routes![show_post, show_post_long, show_user, new_user, login, index, create_post])
+        .launch()
 }

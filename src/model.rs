@@ -15,7 +15,7 @@ pub struct Post {
     pub published: bool,
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Queryable, Identifiable, Insertable, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Queryable, Identifiable, Serialize, Deserialize, Insertable)]
 #[has_many(posts)]
 #[table_name = "users"]
 pub struct User {
@@ -38,8 +38,9 @@ pub struct CreatePostRequest {
     pub published: bool,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, FromForm)]
 pub struct CreateUserRequest {
     pub name: String,
     pub password: String,
+    pub password_repeated: String,
 }
