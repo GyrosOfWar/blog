@@ -13,10 +13,11 @@ pub mod user {
     const SCRYPT_R: u32 = 8;
     const SCRYPT_P: u32 = 1;
 
-    pub fn find_one(user_id: i32, conn: &PgConnection) -> Result<User> {
+    pub fn find_one(user_id: i32, conn: &PgConnection) -> Result<Option<User>> {
         use schema::users::dsl::*;
         users.filter(id.eq(user_id))
             .first::<User>(conn)
+            .optional()
             .map_err(From::from)
     }
 
@@ -33,6 +34,15 @@ pub mod user {
         diesel::insert(&user)
             .into(users::table)
             .get_result::<User>(conn)
+            .map_err(From::from)
+    }
+
+    pub fn find_by_name(username: &str, conn: &PgConnection) -> Result<Option<User>> {
+        use schema::users::dsl::*;
+
+        users.filter(name.eq(username))
+            .first::<User>(conn)
+            .optional()
             .map_err(From::from)
     }
 }

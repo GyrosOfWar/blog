@@ -44,3 +44,9 @@ pub struct CreateUserRequest {
     pub password: String,
     pub password_repeated: String,
 }
+
+#[derive(Serialize, Deserialize, FromForm)]
+pub struct LoginRequest {
+    pub name: String,
+    pub password: String,
+}

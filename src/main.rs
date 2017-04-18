@@ -43,9 +43,10 @@ use rocket_contrib::{Template, JSON};
 use rocket::http::{Cookie, Cookies};
 use rocket::request::Form;
 use serde_json::value::ToJson;
+use ring_pwhash::scrypt;
 
 use db_util::Connection;
-use model::{CreateUserRequest, CreatePostRequest};
+use model::{CreateUserRequest, CreatePostRequest, LoginRequest};
 use errors::Result;
 
 pub const SECRET: &'static [u8] = b"I LOVE FOOD";
@@ -78,6 +79,21 @@ fn login() -> Template {
     Template::render("login", &0)
 }
 
+#[post("/login", data = "<data>")]
+fn do_login(data: Form<LoginRequest>, conn: Connection, cookies: &Cookies) -> Result<Template> {
+    let form = data.into_inner();
+    
+    if let Some(user) = service::user::find_by_name(&form.name, &conn)? {
+        if let Ok(true) = scrypt::scrypt_check(&form.password, &user.pw_hash) {
+            cookies.add(Cookie::new("session_id", "1234"));
+            return Ok(Template::render("index", &0));
+        }
+    }
+
+    // TODO add errors
+    Ok(Template::render("login", &0))
+}
+
 #[post("/register", data = "<form>")]
 fn new_user(form: Form<CreateUserRequest>, conn: Connection) -> Result<Template> {
     let request = form.into_inner();
@@ -96,6 +112,7 @@ fn create_post(data: JSON<CreatePostRequest>,
                conn: Connection,
                cookies: &Cookies)
                -> Result<Template> {
+
     service::post::insert_post(data.0, &conn);
     Ok(Template::render("index", &0))
 }
@@ -103,10 +120,10 @@ fn create_post(data: JSON<CreatePostRequest>,
 fn main() {
     config::configure_logger();
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
     rocket::ignite()
         .manage(db_util::init_pool(&database_url))
         .mount("/",
-               routes![show_post, show_post_long, show_user, new_user, login, index, create_post])
+               routes![show_post, show_post_long, show_user, new_user, login, index, create_post,
+                       do_login])
         .launch()
 }
