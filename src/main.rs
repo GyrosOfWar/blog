@@ -25,6 +25,7 @@ extern crate reqwest;
 extern crate markdown;
 
 extern crate rocket;
+extern crate ring_pwhash;
 
 mod model;
 mod util;
@@ -32,7 +33,7 @@ mod config;
 mod errors;
 mod schema;
 // mod auth;
-// mod service;
+mod service;
 // mod controller;
 
 use std::env;

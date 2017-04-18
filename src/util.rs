@@ -7,6 +7,7 @@ use reqwest::header::{ContentType, UserAgent};
 use reqwest::mime::Mime;
 use serde_json;
 use serde::{Serialize, Serializer};
+use serde::ser::SerializeMap;
 use errors::Result;
 use reqwest;
 
@@ -142,25 +143,25 @@ impl<T> fmt::Debug for Page<T>
     }
 }
 
-// impl<T> Serialize for Page<T>
-//     where T: Serialize
-// {
-//     fn serialize<S>(&self, serializer: &mut S) -> ::std::result::Result<(), S::Error>
-//         where S: Serializer
-//     {
-//         let mut state = try!(serializer.serialize_map(Some(1)));
-//         try!(serializer.serialize_map_key(&mut state, "data"));
-//         try!(serializer.serialize_map_value(&mut state, &self.data));
+impl<T> Serialize for Page<T>
+    where T: Serialize
+{
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: Serializer
+    {
+        let mut map = serializer.serialize_map(Some(1))?;
+        map.serialize_key("data")?;
+        map.serialize_value(&self.data)?;
 
-//         try!(serializer.serialize_map_key(&mut state, "current_page"));
-//         try!(serializer.serialize_map_value(&mut state, &self.current_page));
+        map.serialize_key("current_page")?;
+        map.serialize_value(&self.current_page)?;
 
-//         try!(serializer.serialize_map_key(&mut state, "num_pages"));
-//         try!(serializer.serialize_map_value(&mut state, &self.num_pages));
+        map.serialize_key("num_pages")?;
+        map.serialize_value(&self.num_pages)?;
 
-//         try!(serializer.serialize_map_key(&mut state, "page_size"));
-//         try!(serializer.serialize_map_value(&mut state, &self.page_size));
+        map.serialize_key("page_size")?;
+        map.serialize_value(&self.page_size)?;
 
-//         serializer.serialize_map_end(state)
-//     }
-// }
+        map.end()
+    }
+}

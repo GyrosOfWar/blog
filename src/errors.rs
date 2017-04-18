@@ -7,6 +7,7 @@ use diesel;
 use serde_json;
 
 use serde::{Serialize, Serializer};
+use serde::ser::SerializeMap;
 
 error_chain! {
     foreign_links {
@@ -76,13 +77,18 @@ error_chain! {
 //     }
 // }
 
-// impl Serialize for Error {
-//     fn serialize<S>(&self, serializer: &mut S) -> ::std::result::Result<(), S::Error>
-//         where S: Serializer
-//     {
-//         let mut state = try!(serializer.serialize_map(Some(1)));
-//         try!(serializer.serialize_map_key(&mut state, "description"));
-//         try!(serializer.serialize_map_value(&mut state, self.description()));
-//         serializer.serialize_map_end(state)
-//     }
-// }
+impl Serialize for Error {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        where S: Serializer
+    {
+        // let mut state = try!(serializer.serialize_map(Some(1)));
+        // try!(serializer.serialize_map_key(&mut state, "description"));
+        // try!(serializer.serialize_map_value(&mut state, self.description()));
+        // serializer.serialize_map_end(state)
+
+        let mut map = serializer.serialize_map(Some(1))?;
+        map.serialize_key("description")?;
+        map.serialize_value(self.description())?;
+        map.end()
+    }
+}

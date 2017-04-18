@@ -3,9 +3,8 @@ use errors::*;
 use diesel::prelude::*;
 use diesel;
 use diesel::pg::PgConnection;
-use pwhash::bcrypt;
+use ring_pwhash::scrypt;
 
-use auth::TokenMaker;
 use util::{JsonResponse, Page};
 use model::{CreateUserRequest, CreatePostRequest, Post};
 
@@ -25,33 +24,14 @@ impl<'a> UserService<'a> {
             .map_err(From::from))
     }
 
-    pub fn make_token(&self,
-                      username: &str,
-                      password: &str,
-                      server_secret: &[u8])
-                      -> JsonResponse<String, Error> {
-        use schema::users::dsl::*;
-        let result = users.filter(name.eq(username))
-            .first::<User>(self.connection)
-            .map_err(Error::from)
-            .and_then(|user| {
-                if bcrypt::verify(password, &user.pw_hash) {
-                    let token_maker = TokenMaker::new(server_secret);
-                    let user_id = format!("{}", user.id);
-                    token_maker.make_token(&user_id).ok_or(Error::CreateToken)
-                } else {
-                    Err(Error::InvalidCredentials)
-                }
-            });
-        JsonResponse::from(result)
-    }
-
     pub fn create_user(&self, request: CreateUserRequest) -> JsonResponse<User, Error> {
         use schema::users;
 
+        let params = scrypt::ScryptParams::new(14, 8, 2);
+
         let user = User {
             name: request.name,
-            pw_hash: bcrypt::hash(&request.password).unwrap(),
+            pw_hash: scrypt::scrypt_simple(&request.password, &params).unwrap(),
             id: 0,
         };
         let result = diesel::insert(&user)
