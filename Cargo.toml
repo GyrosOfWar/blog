@@ -13,27 +13,17 @@ log = "0.3"
 env_logger = "0.4"
 dotenv = "0.10"
 time = "0.1"
-quick-error = "1.1"
+error-chain = "*"
 
 chrono = { version = "0.3", features = ["serde"] }
 serde = "0.9"
 serde_json = "0.9"
 serde_derive = "0.9"
 markdown = "0.2"
-hyper = "0.10"
+reqwest = "0.5"
 
-iron = "0.5"
-router = "0.5"
-mount = "0.3"
-bodyparser = "0.6"
-persistent = "0.3"
-urlencoded = "0.5"
-jwt = "0.4"
-rust-crypto = "0.2"
-pwhash = "0.1"
+rocket = "0.2"
+rocket_codegen = "0.2"
+rocket_contrib = "0.2"
 
-[dependencies.iron_diesel_middleware]
-git = "https://github.com/darayus/iron-diesel-middleware"
-
-[profile.release]
-lto = true
+ring-pwhash = "0.1"

@@ -2,17 +2,13 @@ use std::io::Read;
 use std::fmt::Debug;
 use std::cmp;
 
-use iron::prelude::*;
-use iron::status;
-use iron::status::Status;
-use iron_diesel_middleware::DieselReqExt;
 use serde::Deserialize;
+use serde_json;
 
 use service::{UserService, PostService};
 use errors::*;
 use auth::{UserCredentials, JwtToken};
 use model::{CreateUserRequest, CreatePostRequest, Post};
-use serde_json;
 use util::{JsonResponse, markdown_to_html, MarkdownMode};
 use req_ext::*;
 

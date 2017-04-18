@@ -3,15 +3,12 @@ use std::error::Error as StdError;
 use std::io::Read;
 use std::fmt;
 
-use iron::{IronResult, Response, status};
-use iron::status::Status;
+use reqwest::header::{ContentType, UserAgent};
+use reqwest::mime::Mime;
 use serde_json;
 use serde::{Serialize, Serializer};
-use hyper::Client;
-use hyper::mime::Mime;
-use hyper::header::{ContentType, UserAgent};
-
 use errors::Result;
+use reqwest;
 
 /// Provides some additional conversions for Duration types.
 pub trait DurationExt {
@@ -59,19 +56,19 @@ pub enum JsonResponse<T, E> {
     Error(E),
 }
 
-impl<T, E> JsonResponse<T, E>
-    where T: Serialize,
-          E: StdError + Serialize
-{
-    pub fn into_iron_result(self, ok_status: Status, err_status: Status) -> IronResult<Response> {
-        use self::JsonResponse::*;
-        let json = serde_json::to_string(&self).unwrap();
-        match self {
-            Result(_) => Ok(Response::with((ok_status, json))),
-            Error(_) => Ok(Response::with((err_status, json))),
-        }
-    }
-}
+// impl<T, E> JsonResponse<T, E>
+//     where T: Serialize,
+//           E: StdError + Serialize
+// {
+//     pub fn into_iron_result(self, ok_status: Status, err_status: Status) -> IronResult<Response> {
+//         use self::JsonResponse::*;
+//         let json = serde_json::to_string(&self).unwrap();
+//         match self {
+//             Result(_) => Ok(Response::with((ok_status, json))),
+//             Error(_) => Ok(Response::with((err_status, json))),
+//         }
+//     }
+// }
 
 impl<T, E> From<::std::result::Result<T, E>> for JsonResponse<T, E>
     where T: Serialize,
@@ -85,22 +82,8 @@ impl<T, E> From<::std::result::Result<T, E>> for JsonResponse<T, E>
     }
 }
 
-impl<T, E> Into<IronResult<Response>> for JsonResponse<T, E>
-    where T: Serialize,
-          E: StdError + Serialize
-{
-    fn into(self) -> IronResult<Response> {
-        use self::JsonResponse::*;
-        let json = serde_json::to_string(&self).unwrap();
-        match self {
-            Result(_) => Ok(Response::with((status::Ok, json))),
-            Error(_) => Ok(Response::with((status::BadRequest, json))),
-        }
-    }
-}
-
 fn convert_markdown_github(content: &str) -> Result<String> {
-    let client = Client::new();
+    let client = reqwest::Client::new()?;
     let mime: Mime = "text/x-markdown".parse().unwrap();
     let mut res = try!(client.post("https://api.github.com/markdown/raw")
         .body(content)
@@ -159,25 +142,25 @@ impl<T> fmt::Debug for Page<T>
     }
 }
 
-impl<T> Serialize for Page<T>
-    where T: Serialize
-{
-    fn serialize<S>(&self, serializer: &mut S) -> ::std::result::Result<(), S::Error>
-        where S: Serializer
-    {
-        let mut state = try!(serializer.serialize_map(Some(1)));
-        try!(serializer.serialize_map_key(&mut state, "data"));
-        try!(serializer.serialize_map_value(&mut state, &self.data));
+// impl<T> Serialize for Page<T>
+//     where T: Serialize
+// {
+//     fn serialize<S>(&self, serializer: &mut S) -> ::std::result::Result<(), S::Error>
+//         where S: Serializer
+//     {
+//         let mut state = try!(serializer.serialize_map(Some(1)));
+//         try!(serializer.serialize_map_key(&mut state, "data"));
+//         try!(serializer.serialize_map_value(&mut state, &self.data));
 
-        try!(serializer.serialize_map_key(&mut state, "current_page"));
-        try!(serializer.serialize_map_value(&mut state, &self.current_page));
+//         try!(serializer.serialize_map_key(&mut state, "current_page"));
+//         try!(serializer.serialize_map_value(&mut state, &self.current_page));
 
-        try!(serializer.serialize_map_key(&mut state, "num_pages"));
-        try!(serializer.serialize_map_value(&mut state, &self.num_pages));
+//         try!(serializer.serialize_map_key(&mut state, "num_pages"));
+//         try!(serializer.serialize_map_value(&mut state, &self.num_pages));
 
-        try!(serializer.serialize_map_key(&mut state, "page_size"));
-        try!(serializer.serialize_map_value(&mut state, &self.page_size));
+//         try!(serializer.serialize_map_key(&mut state, "page_size"));
+//         try!(serializer.serialize_map_value(&mut state, &self.page_size));
 
-        serializer.serialize_map_end(state)
-    }
-}
+//         serializer.serialize_map_end(state)
+//     }
+// }
