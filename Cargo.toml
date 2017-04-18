@@ -1,33 +1,39 @@
 [package]
+authors = ["Martin Tomasi <martin.tomasi@gmail.com>"]
 name = "blog"
 version = "0.1.0"
-authors = ["Martin Tomasi <martin.tomasi@gmail.com>"]
 
 [dependencies]
-diesel = { version = "0.12", features = ["chrono"] }
-diesel_codegen = { version = "0.12", features = ["postgres"] }
+clippy = "0.0.124"
+dotenv = "0.10"
+env_logger = "0.4"
+error-chain = "*"
+log = "0.3"
+markdown = "0.2"
 r2d2 = "0.7"
 r2d2-diesel = "0.12"
-
-log = "0.3"
-env_logger = "0.4"
-dotenv = "0.10"
-time = "0.1"
-error-chain = "*"
-
-chrono = { version = "0.3", features = ["serde"] }
-serde = "0.9"
-serde_json = "0.9"
-serde_derive = "0.9"
-markdown = "0.2"
 reqwest = "0.5"
-
+ring-pwhash = "0.1"
 rocket = "0.2"
 rocket_codegen = "0.2"
+serde = "0.9"
+serde_derive = "0.9"
+serde_json = "0.9"
+time = "0.1"
 
-ring-pwhash = "0.1"
+[dependencies.chrono]
+features = ["serde"]
+version = "0.3"
+
+[dependencies.diesel]
+features = ["chrono"]
+version = "0.12"
+
+[dependencies.diesel_codegen]
+features = ["postgres"]
+version = "0.12"
 
 [dependencies.rocket_contrib]
-version = "0.2"
 default-features = false
 features = ["handlebars_templates", "json"]
+version = "0.2"

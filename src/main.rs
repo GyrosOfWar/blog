@@ -1,5 +1,5 @@
 #![feature(plugin, custom_derive, custom_attribute)]
-#![plugin(rocket_codegen)]
+#![plugin(rocket_codegen, clippy)]
 
 #[macro_use]
 extern crate log;
