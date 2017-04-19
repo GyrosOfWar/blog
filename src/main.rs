@@ -9,6 +9,8 @@ extern crate dotenv;
 extern crate time;
 #[macro_use]
 extern crate error_chain;
+#[macro_use]
+extern crate maplit;
 
 #[macro_use]
 extern crate diesel;
@@ -63,9 +65,15 @@ fn show_post_long(id: i32, name: String, conn: Connection) -> Result<Template> {
 #[get("/post/<id>")]
 fn show_post(id: i32, conn: Connection) -> Result<Template> {
     let post = service::post::find_one(id, &*conn)?;
-    let mut context = HashMap::new();
-    context.insert("post", post);
-    Ok(Template::render("show_post", &context))
+    if let Some(post) = post {
+        let context = hashmap! {
+            "parent" => "base".to_json()?,
+            "post" => post.to_json()?
+        };
+        Ok(Template::render("show_post", &context))
+    } else {
+        Ok(Template::render("404", &hashmap! {"parent" => "base"} ))
+    }
 }
 
 #[get("/user/<id>")]
@@ -108,7 +116,7 @@ fn new_user(form: Form<CreateUserRequest>, conn: Connection) -> Result<Template>
 
 #[get("/")]
 fn index() -> Template {
-    Template::render("index", &0)
+    Template::render("index", &hashmap! {"parent" => "base", "title" => "Blog"} )
 }
 
 #[get("/static/<file..>")]
@@ -120,7 +128,6 @@ fn serve_static_file(file: PathBuf) -> Result<NamedFile> {
 fn create_post(mut data: JSON<CreatePostRequest>,
                conn: Connection)
                -> Result<Template> {
-
     data.convert_markdown();
     service::post::insert_post(data.0, &conn);
     Ok(Template::render("index", &0))

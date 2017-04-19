@@ -68,10 +68,11 @@ pub mod post {
         JsonResponse::from(result)
     }
 
-    pub fn find_one(post_id: i32, conn: &PgConnection) -> Result<Post> {
+    pub fn find_one(post_id: i32, conn: &PgConnection) -> Result<Option<Post>> {
         use schema::posts::dsl::*;
         posts.filter(id.eq(post_id))
             .first(conn)
+            .optional()
             .map_err(From::from)
     }
 
