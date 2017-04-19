@@ -3,5 +3,9 @@
     <p>
       {{{ post.content }}}
     </p>
+    <span>
+      {{#each post.tags as |tag|}}
+        {{tag}}&nbsp;
+      {{/each~}}
 {{/inline}}
 {{~> (parent)~}}

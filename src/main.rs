@@ -2,7 +2,7 @@
 #![plugin(rocket_codegen)]
 #![allow(needless_pass_by_value)]
 
-#[macro_use]
+#[macro_use(info, warn, debug, log)]
 extern crate log;
 extern crate env_logger;
 extern crate dotenv;
@@ -56,34 +56,48 @@ use errors::Result;
 
 pub const SECRET: &'static [u8] = b"I LOVE FOOD";
 
+#[error(404)]
+fn catch_404(req: &rocket::Request) -> Template {
+    show_404()
+}
+
+fn show_404() -> Template {
+    Template::render("404", &hashmap! {"parent" => "base"} )
+}
+
 #[allow(unused_variables)]
 #[get("/post/<name>/<id>")]
-fn show_post_long(id: i32, name: String, conn: Connection) -> Result<Template> {
+fn show_post_long(id: i32, name: String, conn: Connection) -> Result<Option<Template>> {
     show_post(id, conn)
 }
 
 #[get("/post/<id>")]
-fn show_post(id: i32, conn: Connection) -> Result<Template> {
-    let post = service::post::find_one(id, &*conn)?;
-    if let Some(post) = post {
+fn show_post(id: i32, conn: Connection) -> Result<Option<Template>> {
+    let post = service::post::find_one(id, &conn)?;
+    Ok(post.map(|p| {
         let context = hashmap! {
-            "parent" => "base".to_json()?,
-            "post" => post.to_json()?
+            "parent" => "base".to_json().unwrap(),
+            "post" => p.to_json().unwrap()
         };
-        Ok(Template::render("show_post", &context))
-    } else {
-        Ok(Template::render("404", &hashmap! {"parent" => "base"} ))
-    }
+        Template::render("show_post", &context)
+    }))
 }
 
 #[get("/user/<id>")]
-fn show_user(id: i32, conn: Connection) -> Result<Template> {
-    let user = service::user::find_one(id, &*conn)?;
-    let posts = service::post::find_page(id, 0, 20, &*conn)?;
-    let mut context = HashMap::new();
-    context.insert("user", user.to_json()?);
-    context.insert("posts", posts.to_json()?);
-    Ok(Template::render("show_user", &context))
+fn show_user(id: i32, conn: Connection) -> Result<Option<Template>> {
+    match service::user::find_one(id, &*conn)? {
+        Some(user) => {
+            let posts = service::post::find_page(id, 0, 20, &*conn)?;
+            let context = hashmap! {
+                "parent" => "base".to_json()?,
+                "posts" => posts.to_json()?,
+                "user" => user.to_json()?
+            };
+
+            Ok(Some(Template::render("show_user", &context)))
+        }
+        None => Ok(None)
+    }
 }
 
 #[get("/login")]
@@ -141,5 +155,6 @@ fn main() {
         .mount("/",
                routes![show_post, show_post_long, show_user, new_user, login, index, create_post,
                        do_login, serve_static_file])
+        .catch(errors![catch_404])
         .launch()
 }

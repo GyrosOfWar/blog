@@ -1,16 +1,10 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>Rocket: Cookie Examples</title>
-  </head>
-  <body>
+{{#*inline "page"}}
     <h1>{{ user.name }}</h1>
-    <p>
+    <ul>
       {{#each posts.data as |p|}}
-        <a href="/post/{{p.id}}">{{p.title}}</p
+        <li href="/post/{{p.id}}">{{p.title}}</li>
       {{/each~}}
-    </p>
-  </body>
-</html>
+    </ul>
+{{/inline}}
+{{! remove whitespaces with ~ }}
+{{~> (parent)~}}
