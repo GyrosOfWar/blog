@@ -1,5 +1,5 @@
 #![feature(plugin, custom_derive, custom_attribute)]
-#![plugin(rocket_codegen, clippy)]
+#![plugin(rocket_codegen)]
 #![allow(needless_pass_by_value)]
 
 #[macro_use]

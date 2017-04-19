@@ -4,7 +4,6 @@ name = "blog"
 version = "0.1.0"
 
 [dependencies]
-clippy = "0.0.124"
 dotenv = "0.10"
 env_logger = "0.4"
 error-chain = "*"
