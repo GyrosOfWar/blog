@@ -1,7 +1,8 @@
 #![feature(plugin, custom_derive, custom_attribute)]
 #![plugin(rocket_codegen)]
-#![allow(needless_pass_by_value)]
+#![allow(unknown_lints, needless_pass_by_value)]
 
+#[allow(unused)]
 #[macro_use(info, warn, debug, log)]
 extern crate log;
 extern crate env_logger;
@@ -11,6 +12,8 @@ extern crate time;
 extern crate error_chain;
 #[macro_use]
 extern crate maplit;
+#[macro_use]
+extern crate lazy_static;
 
 #[macro_use]
 extern crate diesel;
@@ -21,6 +24,7 @@ extern crate r2d2_diesel;
 
 extern crate chrono;
 extern crate serde;
+#[macro_use]
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
@@ -31,6 +35,7 @@ extern crate rocket;
 extern crate rocket_contrib;
 extern crate ring_pwhash;
 
+mod auth;
 mod model;
 mod util;
 mod config;
@@ -40,15 +45,13 @@ mod service;
 mod db_util;
 
 use std::env;
-use std::collections::HashMap;
 use std::path::{PathBuf, Path};
 
 use rocket_contrib::{Template, JSON};
-use rocket::http::{Cookie, Cookies};
+use rocket::http::Cookies;
 use rocket::request::Form;
-use serde_json::value::ToJson;
-use ring_pwhash::scrypt;
 use rocket::response::NamedFile;
+use rocket::http::Session;
 
 use db_util::Connection;
 use model::{CreateUserRequest, CreatePostRequest, LoginRequest};
@@ -57,7 +60,7 @@ use errors::Result;
 pub const SECRET: &'static [u8] = b"I LOVE FOOD";
 
 #[error(404)]
-fn catch_404(req: &rocket::Request) -> Template {
+fn catch_404(_: &rocket::Request) -> Template {
     show_404()
 }
 
@@ -75,10 +78,10 @@ fn show_post_long(id: i32, name: String, conn: Connection) -> Result<Option<Temp
 fn show_post(id: i32, conn: Connection) -> Result<Option<Template>> {
     let post = service::post::find_one(id, &conn)?;
     Ok(post.map(|p| {
-        let context = hashmap! {
-            "parent" => "base".to_json().unwrap(),
-            "post" => p.to_json().unwrap()
-        };
+        let context = json! ({
+            "parent": "base",
+            "post": p
+        });
         Template::render("show_post", &context)
     }))
 }
@@ -88,11 +91,11 @@ fn show_user(id: i32, conn: Connection) -> Result<Option<Template>> {
     match service::user::find_one(id, &*conn)? {
         Some(user) => {
             let posts = service::post::find_page(id, 0, 20, &*conn)?;
-            let context = hashmap! {
-                "parent" => "base".to_json()?,
-                "posts" => posts.to_json()?,
-                "user" => user.to_json()?
-            };
+            let context = json!({
+                "parent": "base",
+                "posts": posts,
+                "user": user
+            });
 
             Ok(Some(Template::render("show_user", &context)))
         }
@@ -106,16 +109,9 @@ fn login() -> Template {
 }
 
 #[post("/login", data = "<data>")]
-fn do_login(data: Form<LoginRequest>, conn: Connection, cookies: &Cookies) -> Result<Template> {
+fn do_login(mut session: Session, data: Form<LoginRequest>, conn: Connection) -> Result<Template> {
     let form = data.into_inner();
     
-    if let Some(user) = service::user::find_by_name(&form.name, &conn)? {
-        if let Ok(true) = scrypt::scrypt_check(&form.password, &user.pw_hash) {
-            cookies.add(Cookie::new("session_id", "1234"));
-            return Ok(Template::render("index", &0));
-        }
-    }
-
     // TODO add errors
     Ok(Template::render("login", &0))
 }
@@ -156,5 +152,5 @@ fn main() {
                routes![show_post, show_post_long, show_user, new_user, login, index, create_post,
                        do_login, serve_static_file])
         .catch(errors![catch_404])
-        .launch()
+        .launch();
 }

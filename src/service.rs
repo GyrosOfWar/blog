@@ -36,12 +36,11 @@ pub mod user {
             .map_err(From::from)
     }
 
-    pub fn find_by_name(username: &str, conn: &PgConnection) -> Result<Option<User>> {
+    pub fn find_by_id(user_id: i32, conn: &PgConnection) -> Result<User> {
         use schema::users::dsl::*;
 
-        users.filter(name.eq(username))
+        users.filter(id.eq(user_id))
             .first::<User>(conn)
-            .optional()
             .map_err(From::from)
     }
 }
