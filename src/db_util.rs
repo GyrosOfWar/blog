@@ -25,12 +25,11 @@ impl<'a, 'r> FromRequest<'a, 'r> for Connection {
     type Error = ();
 
     fn from_request(request: &'a Request<'r>) -> request::Outcome<Connection, ()> {
-        let pool =
-            match <State<Pool> as FromRequest>::from_request(request) {
-                Outcome::Success(pool) => pool,
-                Outcome::Failure(e) => return Outcome::Failure(e),
-                Outcome::Forward(_) => return Outcome::Forward(()),
-            };
+        let pool = match <State<Pool> as FromRequest>::from_request(request) {
+            Outcome::Success(pool) => pool,
+            Outcome::Failure(e) => return Outcome::Failure(e),
+            Outcome::Forward(_) => return Outcome::Forward(()),
+        };
 
         match pool.get() {
             Ok(conn) => Outcome::Success(Connection(conn)),

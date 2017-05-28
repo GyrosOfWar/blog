@@ -27,7 +27,7 @@ pub struct User {
 impl User {
     pub fn verify_password(&self, cleartext_pw: &str) -> bool {
         use ring_pwhash::scrypt;
-        
+
         scrypt::scrypt_check(cleartext_pw, &self.pw_hash).unwrap_or(false)
     }
 }

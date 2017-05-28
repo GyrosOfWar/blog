@@ -48,7 +48,7 @@ use std::env;
 use std::path::{PathBuf, Path};
 
 use rocket_contrib::{Template, JSON};
-use rocket::http::{Cookies, Cookie};
+use rocket::http::Cookie;
 use rocket::request::{Form, FlashMessage};
 use rocket::response::NamedFile;
 use rocket::http::Session;
@@ -68,7 +68,7 @@ fn catch_404(_: &rocket::Request) -> Template {
 }
 
 fn show_404() -> Template {
-    Template::render("404", &hashmap! {"parent" => "base"} )
+    Template::render("404", &hashmap! {"parent" => "base"})
 }
 
 #[allow(unused_variables)]
@@ -81,12 +81,12 @@ fn show_post_long(id: i32, name: String, conn: Connection) -> Result<Option<Temp
 fn show_post(id: i32, conn: Connection) -> Result<Option<Template>> {
     let post = service::post::find_one(id, &conn)?;
     Ok(post.map(|p| {
-        let context = json! ({
+                    let context = json! ({
             "parent": "base",
             "post": p
         });
-        Template::render("show_post", &context)
-    }))
+                    Template::render("show_post", &context)
+                }))
 }
 
 #[get("/user/<id>")]
@@ -102,7 +102,7 @@ fn show_user(id: i32, conn: Connection) -> Result<Option<Template>> {
 
             Ok(Some(Template::render("show_user", &context)))
         }
-        None => Ok(None)
+        None => Ok(None),
     }
 }
 
@@ -117,7 +117,7 @@ fn login(flash: Option<FlashMessage>) -> Template {
 
 #[post("/login", data = "<data>")]
 fn do_login(mut session: Session, data: Form<LoginRequest>, conn: Connection) -> Flash<Redirect> {
-    let form = data.into_inner();  
+    let form = data.into_inner();
     if let Ok(Some(user)) = user::find_by_name(&form.name, &conn) {
         if user.verify_password(&form.password) {
             session.set(Cookie::new("user_id", user.id.to_string()));
@@ -153,9 +153,7 @@ fn serve_static_file(file: PathBuf) -> Result<NamedFile> {
 }
 
 #[post("/post/new", data = "<data>")]
-fn create_post(mut data: JSON<CreatePostRequest>,
-               conn: Connection)
-               -> Result<Template> {
+fn create_post(mut data: JSON<CreatePostRequest>, conn: Connection) -> Result<Template> {
     data.convert_markdown();
     service::post::insert_post(data.0, &conn);
     Ok(Template::render("index", &0))

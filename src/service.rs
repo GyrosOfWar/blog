@@ -14,7 +14,8 @@ pub mod user {
 
     pub fn find_one(user_id: i32, conn: &PgConnection) -> Result<Option<User>> {
         use schema::users::dsl::*;
-        users.filter(id.eq(user_id))
+        users
+            .filter(id.eq(user_id))
             .first::<User>(conn)
             .optional()
             .map_err(From::from)
@@ -39,7 +40,8 @@ pub mod user {
     pub fn find_by_id(user_id: i32, conn: &PgConnection) -> Result<User> {
         use schema::users::dsl::*;
 
-        users.filter(id.eq(user_id))
+        users
+            .filter(id.eq(user_id))
             .first::<User>(conn)
             .map_err(From::from)
     }
@@ -47,13 +49,13 @@ pub mod user {
     pub fn find_by_name(username: &str, conn: &PgConnection) -> Result<Option<User>> {
         use schema::users::dsl::*;
 
-        users.filter(name.eq(username))
+        users
+            .filter(name.eq(username))
             .first::<User>(conn)
             .optional()
             .map_err(From::from)
     }
 }
-
 
 pub mod post {
     use errors::*;
@@ -78,7 +80,8 @@ pub mod post {
 
     pub fn find_one(post_id: i32, conn: &PgConnection) -> Result<Option<Post>> {
         use schema::posts::dsl::*;
-        posts.filter(id.eq(post_id))
+        posts
+            .filter(id.eq(post_id))
             .first(conn)
             .optional()
             .map_err(From::from)
@@ -94,7 +97,8 @@ pub mod post {
         let offset = page_num * page_size;
         let limit = offset + page_size;
 
-        posts.filter(owner_id.eq(user_id))
+        posts
+            .filter(owner_id.eq(user_id))
             .offset(offset)
             .limit(limit)
             .load(conn)
