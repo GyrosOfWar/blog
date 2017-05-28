@@ -48,14 +48,17 @@ use std::env;
 use std::path::{PathBuf, Path};
 
 use rocket_contrib::{Template, JSON};
-use rocket::http::Cookies;
-use rocket::request::Form;
+use rocket::http::{Cookies, Cookie};
+use rocket::request::{Form, FlashMessage};
 use rocket::response::NamedFile;
 use rocket::http::Session;
+use rocket::response::{Redirect, Flash};
+use serde_json::Value;
 
 use db_util::Connection;
-use model::{CreateUserRequest, CreatePostRequest, LoginRequest};
+use model::{User, CreateUserRequest, CreatePostRequest, LoginRequest};
 use errors::Result;
+use service::user;
 
 pub const SECRET: &'static [u8] = b"I LOVE FOOD";
 
@@ -104,16 +107,27 @@ fn show_user(id: i32, conn: Connection) -> Result<Option<Template>> {
 }
 
 #[get("/login")]
-fn login() -> Template {
-    Template::render("login", &0)
+fn login(flash: Option<FlashMessage>) -> Template {
+    let mut context = hashmap! { "parent" => "base".to_string() };
+    if let Some(msg) = flash {
+        context.insert("flash", msg.msg().to_string());
+    }
+    Template::render("login", &context)
 }
 
 #[post("/login", data = "<data>")]
-fn do_login(mut session: Session, data: Form<LoginRequest>, conn: Connection) -> Result<Template> {
-    let form = data.into_inner();
-    
-    // TODO add errors
-    Ok(Template::render("login", &0))
+fn do_login(mut session: Session, data: Form<LoginRequest>, conn: Connection) -> Flash<Redirect> {
+    let form = data.into_inner();  
+    if let Ok(Some(user)) = user::find_by_name(&form.name, &conn) {
+        if user.verify_password(&form.password) {
+            session.set(Cookie::new("user_id", user.id.to_string()));
+            Flash::success(Redirect::to("/"), "Successfully logged in.")
+        } else {
+            Flash::error(Redirect::to("/login"), "Invalid username/password.")
+        }
+    } else {
+        Flash::error(Redirect::to("/login"), "Invalid username/password.")
+    }
 }
 
 #[post("/register", data = "<form>")]
@@ -125,8 +139,12 @@ fn new_user(form: Form<CreateUserRequest>, conn: Connection) -> Result<Template>
 }
 
 #[get("/")]
-fn index() -> Template {
-    Template::render("index", &hashmap! {"parent" => "base", "title" => "Blog"} )
+fn index(user: Option<User>) -> Template {
+    let mut context = hashmap!{ "parent" => Value::String("base".into()), "title" =>Value::String("Blog".into()) };
+    if let Some(user) = user {
+        context.insert("user", serde_json::to_value(user).unwrap());
+    }
+    Template::render("index", &context)
 }
 
 #[get("/static/<file..>")]
@@ -148,6 +166,7 @@ fn main() {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     rocket::ignite()
         .manage(db_util::init_pool(&database_url))
+        .attach(Template::fairing())
         .mount("/",
                routes![show_post, show_post_long, show_user, new_user, login, index, create_post,
                        do_login, serve_static_file])

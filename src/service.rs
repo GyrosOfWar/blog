@@ -43,6 +43,15 @@ pub mod user {
             .first::<User>(conn)
             .map_err(From::from)
     }
+
+    pub fn find_by_name(username: &str, conn: &PgConnection) -> Result<Option<User>> {
+        use schema::users::dsl::*;
+
+        users.filter(name.eq(username))
+            .first::<User>(conn)
+            .optional()
+            .map_err(From::from)
+    }
 }
 
 

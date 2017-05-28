@@ -24,6 +24,14 @@ pub struct User {
     pub id: i32,
 }
 
+impl User {
+    pub fn verify_password(&self, cleartext_pw: &str) -> bool {
+        use ring_pwhash::scrypt;
+        
+        scrypt::scrypt_check(cleartext_pw, &self.pw_hash).unwrap_or(false)
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Insertable)]
 #[table_name = "posts"]
 pub struct CreatePostRequest {
@@ -42,14 +50,14 @@ impl CreatePostRequest {
     }
 }
 
-#[derive(Deserialize, Debug, FromForm)]
+#[derive(Serialize, Deserialize, FromForm, Debug)]
 pub struct CreateUserRequest {
     pub name: String,
     pub password: String,
     pub password_repeated: String,
 }
 
-#[derive(Serialize, Deserialize, FromForm)]
+#[derive(Serialize, Deserialize, FromForm, Debug)]
 pub struct LoginRequest {
     pub name: String,
     pub password: String,

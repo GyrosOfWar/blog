@@ -1,10 +1,10 @@
 {{#*inline "page"}}
-    <h1>{{ user.name }}</h1>
-    <ul>
-      {{#each posts.data as |p|}}
-        <li href="/post/{{p.id}}">{{p.title}}</li>
-      {{/each~}}
-    </ul>
+    <h1>User page for {{ user.name }}</h1>
+    <h2>Posts</h2>
+    {{#each posts.data as |p|}}
+      <p>
+        <date>{{p.created_on}}</date>&nbsp;<a href="/posts{{p.id}}">{{p.title}}</a>
+      </p>
+    {{/each~}}
 {{/inline}}
-{{! remove whitespaces with ~ }}
 {{~> (parent)~}}
