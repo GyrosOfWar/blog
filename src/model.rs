@@ -70,7 +70,7 @@ impl<'r> FromForm<'r> for CreatePostRequest {
         }
 
         for key in KEYS {
-          if !items.contains_key(key) {
+            if !items.contains_key(key) {
                 return Err(format!("Missing form parameter: {}", key));
             }
         }
@@ -80,17 +80,19 @@ impl<'r> FromForm<'r> for CreatePostRequest {
             tags.push(tag.into());
         }
 
-        let owner = items["owner_id"].parse().map_err(|_| format!("Failed to parse owner ID"))?;
+        let owner = items["owner_id"]
+            .parse()
+            .map_err(|_| format!("Failed to parse owner ID"))?;
         let published = items["published"].parse().unwrap_or(false);
-        
+
         Ok(CreatePostRequest {
-            title: items["title"].clone(),
-            content: items["content"].clone(),
-            tags: tags,
-            owner_id: owner,
-            created_on: UTC::now(),
-            published: published
-        })        
+               title: items["title"].clone(),
+               content: items["content"].clone(),
+               tags: tags,
+               owner_id: owner,
+               created_on: UTC::now(),
+               published: published,
+           })
     }
 }
 
