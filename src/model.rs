@@ -5,6 +5,7 @@ use schema::*;
 use util;
 use rocket::request::{FromForm, FormItems};
 use regex::Regex;
+use serde_json::{self, Value};
 
 #[derive(PartialEq, Eq, Debug, Clone, Queryable, Identifiable, Serialize, Deserialize, AsChangeset)]
 #[table_name = "posts"]
@@ -16,6 +17,18 @@ pub struct Post {
     pub owner_id: i32,
     pub tags: Vec<String>,
     pub published: bool,
+}
+
+impl Post {
+    pub fn to_json(&self) -> Value {
+        let mut value = serde_json::to_value(self).unwrap();
+        {
+            let mut obj = value.as_object_mut().unwrap();
+            obj.insert("created_on_short".to_string(),
+                       Value::String(format!("{}", self.created_on.format("%Y-%m-%d"))));
+        }
+        value
+    }
 }
 
 #[derive(PartialEq, Eq, Debug, Clone, Queryable, Identifiable, Serialize, Deserialize, Insertable)]

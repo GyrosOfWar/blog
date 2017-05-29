@@ -62,10 +62,6 @@ use service::user;
 
 #[error(404)]
 fn catch_404(_: &rocket::Request) -> Template {
-    show_404()
-}
-
-fn show_404() -> Template {
     Template::render("404", &hashmap! {"parent" => "base"})
 }
 
@@ -81,7 +77,7 @@ fn show_post(id: i32, conn: Connection) -> Result<Option<Template>> {
     Ok(post.map(|p| {
                     let context = json! ({
             "parent": "base",
-            "post": p
+            "post": p.to_json()
         });
                     Template::render("show_post", &context)
                 }))
@@ -91,7 +87,8 @@ fn show_post(id: i32, conn: Connection) -> Result<Option<Template>> {
 fn show_user(id: i32, conn: Connection) -> Result<Option<Template>> {
     match service::user::find_one(id, &*conn)? {
         Some(user) => {
-            let posts = service::post::find_page(id, 0, 20, &*conn)?;
+            let posts = service::post::find_page(id, 0, 20, &*conn)?
+                .map(|p| p.to_json());
             let context = json!({
                 "parent": "base",
                 "posts": posts,

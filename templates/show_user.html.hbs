@@ -3,7 +3,7 @@
     <h2>Posts</h2>
     {{#each posts.data as |p|}}
       <p>
-        <date>{{p.created_on}}</date>&nbsp;<a href="/post/{{p.id}}">{{p.title}}</a>
+        <time datetime="{{p.created_on}}">{{p.created_on_short}}</time dat>&nbsp;<a href="/post/{{p.id}}">{{p.title}}</a>
       </p>
     {{/each~}}
 {{/inline}}

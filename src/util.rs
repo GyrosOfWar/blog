@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::time::Duration;
 use std::error::Error as StdError;
 use std::io::Read;
@@ -71,13 +72,14 @@ impl<T, E> From<::std::result::Result<T, E>> for JsonResponse<T, E>
 fn convert_markdown_github(content: &str) -> Result<String> {
     let client = reqwest::Client::new()?;
     let mime: Mime = "text/x-markdown".parse().unwrap();
-    let mut res = try!(client.post("https://api.github.com/markdown/raw")
+    let mut res = client
+        .post("https://api.github.com/markdown/raw")
         .body(content)
         .header(ContentType(mime))
         .header(UserAgent("hyper/0.9.11".to_owned()))
-        .send());
+        .send()?;
     let mut text = String::new();
-    try!(res.read_to_string(&mut text));
+    res.read_to_string(&mut text)?;
     Ok(text)
 }
 
@@ -96,20 +98,35 @@ pub fn markdown_to_html(input: &str) -> String {
 }
 
 pub struct Page<T> {
-    data: Vec<T>,
-    current_page: i64,
-    num_pages: i64,
-    page_size: i64,
+    pub data: Vec<T>,
+    pub current_page: i64,
+    pub num_pages: i64,
+    pub page_size: i64,
+}
+
+impl<T> Deref for Page<T> {
+    type Target = [T];
+
+    fn deref(&self) -> &Self::Target {
+        &self.data
+    }
 }
 
 impl<T> Page<T> {
     pub fn new(data: Vec<T>, current_page: i64, num_pages: i64, page_size: i64) -> Page<T> {
         Page {
-            data: data,
-            current_page: current_page,
-            num_pages: num_pages,
-            page_size: page_size,
+            data,
+            current_page,
+            num_pages,
+            page_size,
         }
+    }
+
+    pub fn map<F, R>(self, mapper: F) -> Page<R>
+        where F: FnMut(T) -> R
+    {
+        let data = self.data.into_iter().map(mapper).collect();
+        Page::new(data, self.current_page, self.num_pages, self.page_size)
     }
 }
 

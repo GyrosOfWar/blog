@@ -1,4 +1,3 @@
-
 use std::ops::Deref;
 
 use diesel::pg::PgConnection;
