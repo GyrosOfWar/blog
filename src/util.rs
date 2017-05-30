@@ -1,6 +1,5 @@
 use std::ops::Deref;
 use std::time::Duration;
-use std::error::Error as StdError;
 use std::io::Read;
 use std::fmt;
 
@@ -45,26 +44,6 @@ impl DurationExt for Duration {
             Duration::new(seconds, nanos as u32)
         } else {
             Duration::new(0, nanos as u32)
-        }
-    }
-}
-
-#[derive(Serialize)]
-pub enum JsonResponse<T, E> {
-    #[serde(rename="result")]
-    Result(T),
-    #[serde(rename="error")]
-    Error(E),
-}
-
-impl<T, E> From<::std::result::Result<T, E>> for JsonResponse<T, E>
-    where T: Serialize,
-          E: StdError + Serialize
-{
-    fn from(result: ::std::result::Result<T, E>) -> JsonResponse<T, E> {
-        match result {
-            Ok(v) => JsonResponse::Result(v),
-            Err(e) => JsonResponse::Error(e),
         }
     }
 }

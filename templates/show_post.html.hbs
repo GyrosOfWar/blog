@@ -1,11 +1,29 @@
 {{#*inline "page"}}
     <h1>{{ post.title }}</h1>
+    <p>Published on <time datetime="{{ post.created_on }}">{{ post.created_on_short }}</time> by <a href="/user/{{post.owner_id}}">{{user_name}}</a></p>
     <p>
       {{{ post.content }}}
     </p>
-    <span>
-      {{#each post.tags as |tag|}}
-        {{tag}}&nbsp;
-      {{/each~}}
+    <p id="tags">
+    {{#each post.tags as |tag|}}
+      <a href="/user/{{post.owner_id}}">{{tag}}&nbsp;</a>
+    {{/each~}}
+    </p>
+
+    {{#if user}}
+      <button id="delete-button" class="btn btn-danger">Delete post</button>
+      <button id="edit-button" class="btn">Edit post</button>
+      <script>
+        var element = document.getElementById("delete-button");
+        element.addEventListener("click", (event) => {
+          if (confirm("Are you sure you want to delete this post?")) {
+            var postId = "{{post.id}}";
+            fetch("/post/" + postId, {method: "DELETE"})
+              .then(() => window.location.href = "/")
+              .catch((e) => alert("Error: " + e));
+          }
+        })
+      </script>
+    {{/if}}
 {{/inline}}
 {{~> (parent)~}}

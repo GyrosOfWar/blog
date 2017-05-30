@@ -55,6 +55,16 @@ pub mod user {
             .optional()
             .map_err(From::from)
     }
+
+    pub fn get_name(user_id: i32, conn: &PgConnection) -> Result<String> {
+        use schema::users;
+
+        users::table
+            .select(users::name)
+            .filter(users::id.eq(user_id))
+            .first(conn)
+            .map_err(From::from)
+    }
 }
 
 pub mod post {
@@ -63,19 +73,16 @@ pub mod post {
     use diesel;
     use diesel::pg::PgConnection;
 
-    use util::{JsonResponse, Page};
+    use util::Page;
     use model::{CreatePostRequest, Post};
 
-    pub fn insert_post(request: CreatePostRequest,
-                       conn: &PgConnection)
-                       -> JsonResponse<Post, Error> {
+    pub fn insert_post(request: CreatePostRequest, conn: &PgConnection) -> Result<Post> {
         use schema::posts;
 
-        let result = diesel::insert(&request)
+        diesel::insert(&request)
             .into(posts::table)
             .get_result::<Post>(conn)
-            .map_err(From::from);
-        JsonResponse::from(result)
+            .map_err(From::from)
     }
 
     pub fn find_one(post_id: i32, conn: &PgConnection) -> Result<Option<Post>> {
@@ -98,7 +105,7 @@ pub mod post {
         let limit = offset + page_size;
 
         posts
-            .filter(owner_id.eq(user_id))
+            .filter(owner_id.eq(user_id).and(published.eq(true)))
             .offset(offset)
             .limit(limit)
             .load(conn)
@@ -107,7 +114,7 @@ pub mod post {
     }
 
     #[allow(dead_code)]
-    pub fn update_post(post: &Post, conn: &PgConnection) -> JsonResponse<Post, Error> {
-        JsonResponse::from(post.save_changes(conn).map_err(From::from))
+    pub fn update_post(post: &Post, conn: &PgConnection) -> Result<Post> {
+        post.save_changes(conn).map_err(From::from)
     }
 }

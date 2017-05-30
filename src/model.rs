@@ -95,7 +95,7 @@ impl<'r> FromForm<'r> for CreatePostRequest {
 
         let owner = items["owner_id"]
             .parse()
-            .map_err(|_| format!("Failed to parse owner ID"))?;
+            .map_err(|e| format!("Failed to parse owner ID: {}", e))?;
         let published = items["published"].parse().unwrap_or(false);
 
         Ok(CreatePostRequest {

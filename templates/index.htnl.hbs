@@ -1,4 +1,8 @@
 {{#*inline "page"}}
-
+  {{#if flash}}
+      <div class="alert alert-info" role="alert">{{ flash }}</div>
+  {{else}}
+      <p>Please login to continue.</p>
+  {{/if}}  
 {{/inline}}
 {{~> (parent)~}}

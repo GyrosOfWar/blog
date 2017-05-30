@@ -2,39 +2,35 @@
 #![plugin(rocket_codegen)]
 #![allow(unknown_lints, needless_pass_by_value)]
 
-#[allow(unused)]
-#[macro_use(info, warn, debug, log)]
-extern crate log;
-extern crate env_logger;
+extern crate chrono;
+#[macro_use]
+extern crate diesel_codegen;
+#[macro_use]
+extern crate diesel;
 extern crate dotenv;
-extern crate time;
+extern crate env_logger;
 #[macro_use]
 extern crate error_chain;
 #[macro_use]
+extern crate lazy_static;
+#[macro_use(warn, log, info)]
+extern crate log;
+#[macro_use]
 extern crate maplit;
-
-#[macro_use]
-extern crate diesel;
-#[macro_use]
-extern crate diesel_codegen;
-extern crate r2d2;
+extern crate markdown;
 extern crate r2d2_diesel;
-
-extern crate chrono;
-extern crate serde;
-#[macro_use]
-extern crate serde_json;
+extern crate r2d2;
+extern crate regex;
+extern crate reqwest;
+extern crate ring_pwhash;
+extern crate rocket_contrib;
+extern crate rocket;
 #[macro_use]
 extern crate serde_derive;
-extern crate reqwest;
-extern crate markdown;
-
-extern crate rocket;
-extern crate rocket_contrib;
-extern crate ring_pwhash;
-extern crate regex;
 #[macro_use]
-extern crate lazy_static;
+extern crate serde_json;
+extern crate serde;
+extern crate time;
 
 mod auth;
 mod model;
@@ -54,6 +50,7 @@ use rocket::request::{Form, FlashMessage};
 use rocket::response::NamedFile;
 use rocket::http::Session;
 use rocket::response::{Redirect, Flash};
+use serde_json::Value;
 
 use db_util::Connection;
 use model::{User, CreateUserRequest, CreatePostRequest, LoginRequest};
@@ -67,20 +64,30 @@ fn catch_404(_: &rocket::Request) -> Template {
 
 #[allow(unused_variables)]
 #[get("/post/<name>/<id>")]
-fn show_post_long(id: i32, name: String, conn: Connection) -> Result<Option<Template>> {
-    show_post(id, conn)
+fn show_post_long(id: i32, name: String, conn: Connection, user: Option<User>) -> Result<Option<Template>> {
+    show_post(id, conn, user)
 }
 
 #[get("/post/<id>")]
-fn show_post(id: i32, conn: Connection) -> Result<Option<Template>> {
+fn show_post(id: i32, conn: Connection, user: Option<User>) -> Result<Option<Template>> {
     let post = service::post::find_one(id, &conn)?;
-    Ok(post.map(|p| {
-                    let context = json! ({
-            "parent": "base",
-            "post": p.to_json()
-        });
-                    Template::render("show_post", &context)
-                }))
+    let mut context = hashmap! {
+        "parent" => Value::String("base".into())
+    };
+    match post {
+        Some(post) => {
+            context.insert("post".into(), post.to_json());
+            let user_name = service::user::get_name(post.owner_id, &conn)?;
+            context.insert("user_name", Value::String(user_name));
+        }, 
+        None => return Ok(None)
+    }
+    if let Some(user) = user {
+        context.insert("user".into(), serde_json::to_value(user)?);
+    }
+    info!("{:#?}", context);
+
+    Ok(Some(Template::render("show_post", &context)))
 }
 
 #[get("/user/<id>")]
@@ -160,10 +167,10 @@ fn serve_static_file(file: PathBuf) -> Result<NamedFile> {
 
 #[get("/post/new")]
 fn post_editor(user: User) -> Template {
-    let context = hashmap! { 
-        "parent" => "base".to_string(),
-        "user_id" => user.id.to_string(),
-    };
+    let context = json!( { 
+        "parent": "base",
+        "user": user,
+    } );
     Template::render("write_post", &context)
 }
 
@@ -171,7 +178,7 @@ fn post_editor(user: User) -> Template {
 fn create_post(data: Form<CreatePostRequest>, conn: Connection) -> Result<Flash<Redirect>> {
     let mut data = data.into_inner();
     data.convert_markdown();
-    service::post::insert_post(data, &conn);
+    service::post::insert_post(data, &conn)?;
     Ok(Flash::success(Redirect::to("/"), "Post created!"))
 }
 
