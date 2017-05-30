@@ -199,8 +199,6 @@ fn edit_post(id: i32, conn: Connection, user: User) -> Result<Option<Template>> 
                 "post": p,
                 "tags": tags
             });
-            info!("ctx: {}", context);
-
             Ok(Some(Template::render("write_post", &context)))
         },
         None => Ok(None)

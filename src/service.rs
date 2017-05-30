@@ -87,6 +87,7 @@ pub mod post {
 
     pub fn find_one(post_id: i32, conn: &PgConnection) -> Result<Option<Post>> {
         use schema::posts::dsl::*;
+        
         posts
             .filter(id.eq(post_id))
             .first(conn)

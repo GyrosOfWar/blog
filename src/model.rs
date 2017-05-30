@@ -17,6 +17,7 @@ pub struct Post {
     pub owner_id: i32,
     pub tags: Vec<String>,
     pub published: bool,
+    pub markdown_content: String,
 }
 
 impl Post {
@@ -53,7 +54,8 @@ impl User {
 #[table_name = "posts"]
 pub struct CreatePostRequest {
     pub title: String,
-    pub content: String,
+    pub markdown_content: String,
+    pub content: Option<String>,
     pub tags: Vec<String>,
     pub owner_id: i32,
     #[serde(default = "UTC::now")]
@@ -63,7 +65,7 @@ pub struct CreatePostRequest {
 
 impl CreatePostRequest {
     pub fn convert_markdown(&mut self) {
-        self.content = util::markdown_to_html(&self.content);
+        self.content = Some(util::markdown_to_html(&self.markdown_content));
     }
 }
 
@@ -74,7 +76,7 @@ impl<'r> FromForm<'r> for CreatePostRequest {
         lazy_static! {
             static ref TAGS_REGEX: Regex = Regex::new("\\s").unwrap();
         }
-        const KEYS: &[&str] = &["title", "content", "tags", "owner_id", "published"];
+        const KEYS: &[&str] = &["title", "markdown_content", "tags", "owner_id", "published"];
 
         let mut items = HashMap::new();
         for (k, v) in form_items {
@@ -100,11 +102,12 @@ impl<'r> FromForm<'r> for CreatePostRequest {
 
         Ok(CreatePostRequest {
                title: items["title"].clone(),
-               content: items["content"].clone(),
+               markdown_content: items["markdown_content"].clone(),
                tags: tags,
                owner_id: owner,
                created_on: UTC::now(),
                published: published,
+               content: None,
            })
     }
 }
