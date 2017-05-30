@@ -62,12 +62,6 @@ fn catch_404(_: &rocket::Request) -> Template {
     Template::render("404", &hashmap! {"parent" => "base"})
 }
 
-#[allow(unused_variables)]
-#[get("/post/<name>/<id>")]
-fn show_post_long(id: i32, name: String, conn: Connection, user: Option<User>) -> Result<Option<Template>> {
-    show_post(id, conn, user)
-}
-
 #[get("/post/<id>")]
 fn show_post(id: i32, conn: Connection, user: Option<User>) -> Result<Option<Template>> {
     let post = service::post::find_one(id, &conn)?;
@@ -182,6 +176,37 @@ fn create_post(data: Form<CreatePostRequest>, conn: Connection) -> Result<Flash<
     Ok(Flash::success(Redirect::to("/"), "Post created!"))
 }
 
+#[get("/user/<user_id>/tag/<tag>")]
+fn get_by_tag(user_id: i32, tag: String, conn: Connection) -> Result<Template> {
+    let posts = service::post::get_by_tag(user_id, &tag, &conn)?;
+    let context = json!({
+        "parent": "base",
+        "posts": posts
+    });
+
+    Ok(Template::render("post_list", &context))
+}
+
+#[get("/post/<id>/edit")]
+fn edit_post(id: i32, conn: Connection, user: User) -> Result<Option<Template>> {
+    let post = service::post::find_one(id, &conn)?;
+    match post {
+        Some(p) => {
+            let tags = p.tags.join(" ");
+            let context = json!({
+                "parent": "base",
+                "user": user,
+                "post": p,
+                "tags": tags
+            });
+            info!("ctx: {}", context);
+
+            Ok(Some(Template::render("write_post", &context)))
+        },
+        None => Ok(None)
+    }
+}
+
 fn main() {
     config::configure_logger();
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -189,8 +214,8 @@ fn main() {
         .manage(db_util::init_pool(&database_url))
         .attach(Template::fairing())
         .mount("/",
-               routes![show_post, show_post_long, show_user, new_user, login, index, create_post,
-                       do_login, serve_static_file, do_logout, post_editor])
+               routes![show_post, show_user, new_user, login, index, create_post,
+                       do_login, serve_static_file, do_logout, post_editor, get_by_tag, edit_post])
         .catch(errors![catch_404])
         .launch();
 }

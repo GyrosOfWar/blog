@@ -1,18 +1,18 @@
 {{#*inline "page"}}
     <h1>{{ post.title }}</h1>
-    <p>Published on <time datetime="{{ post.created_on }}">{{ post.created_on_short }}</time> by <a href="/user/{{post.owner_id}}">{{user_name}}</a></p>
+    <p class="lead">Published on <time datetime="{{ post.created_on }}">{{ post.created_on_short }}</time> by <a href="/user/{{post.owner_id}}">{{ user_name }}</a></p>
     <p>
       {{{ post.content }}}
     </p>
     <p id="tags">
-    {{#each post.tags as |tag|}}
-      <a href="/user/{{post.owner_id}}">{{tag}}&nbsp;</a>
+    {{#each post.tags}}
+      <a href="/user/{{ ../post.owner_id }}/tag/{{this}}">{{ this }}&nbsp;</a>
     {{/each~}}
     </p>
 
     {{#if user}}
       <button id="delete-button" class="btn btn-danger">Delete post</button>
-      <button id="edit-button" class="btn">Edit post</button>
+      <a href="/post/{{post.id}}/edit" id="edit" class="btn" role="button">Edit post</a>
       <script>
         var element = document.getElementById("delete-button");
         element.addEventListener("click", (event) => {

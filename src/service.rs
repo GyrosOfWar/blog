@@ -113,8 +113,16 @@ pub mod post {
             .map_err(From::from)
     }
 
-    #[allow(dead_code)]
     pub fn update_post(post: &Post, conn: &PgConnection) -> Result<Post> {
         post.save_changes(conn).map_err(From::from)
+    }
+
+    pub fn get_by_tag(user_id: i32, tag: &str, conn: &PgConnection) -> Result<Vec<Post>> {
+        use schema::posts::dsl::*;
+
+        posts
+            .filter(owner_id.eq(user_id).and(tags.contains(vec![tag])))
+            .load(conn)
+            .map_err(From::from)
     }
 }

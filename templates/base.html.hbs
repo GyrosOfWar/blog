@@ -5,27 +5,12 @@
     <meta name="viewport" content="width=device-width" />
     <link rel="stylesheet" href="/static/bootstrap.min.css">
     <link rel="stylesheet" href="/static/syntaxhighlight.css">
+    <link rel="stylesheet" href="/static/override.css">
     <title>{{title}}</title>
 </head>
 
 <body>
-    <div class="container">
-        <nav role="navigation" class="navbar navbar-toggleable navbar-light bg-primary">
-            <button type="button" class="navbar-toggler navbar-toggler-right"><span class="navbar-toggler-icon"></span></button>
-            <a class="navbar-brand" href="/">Blog</a>
-                <div class="collapse navbar-collapse">
-                    <ul class="mr-auto navbar-nav">
-                        {{#if user}}
-                            <li class="nav-item"><a class="nav-link" href="/user/{{user.id}}">Profile</a></li>
-                            <li class="nav-item"><a class="nav-link" href="/post/new">New post</a></li>
-                            <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
-                        {{else}}
-                            <li class="nav-item"><a class="nav-link" href="/login">Login</a></li>                            
-                        {{/if}}
-                    </ul>
-                </div>
-        </nav>
-
+    <div class="container my-2">
         {{~> page}}
     </div>
 
