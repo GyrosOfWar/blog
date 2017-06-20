@@ -16,8 +16,8 @@ impl<'a, 'r> FromRequest<'a, 'r> for User {
         };
         let connection = pool.get().unwrap();
         let id: Option<i32> = request
-            .session()
-            .get("user_id")
+            .cookies()
+            .get_private("user_id")
             .and_then(|cookie| cookie.value().parse().ok());
         let user = id.and_then(|id| user::find_by_id(id, &connection).ok());
         match user {

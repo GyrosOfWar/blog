@@ -45,10 +45,9 @@ use std::env;
 use std::path::{PathBuf, Path};
 
 use rocket_contrib::Template;
-use rocket::http::Cookie;
+use rocket::http::{Cookie, Cookies};
 use rocket::request::{Form, FlashMessage};
 use rocket::response::NamedFile;
-use rocket::http::Session;
 use rocket::response::{Redirect, Flash};
 use serde_json::Value;
 
@@ -112,11 +111,11 @@ fn login(flash: Option<FlashMessage>) -> Template {
 }
 
 #[post("/login", data = "<data>")]
-fn do_login(mut session: Session, data: Form<LoginRequest>, conn: Connection) -> Flash<Redirect> {
+fn do_login(mut cookies: Cookies, data: Form<LoginRequest>, conn: Connection) -> Flash<Redirect> {
     let form = data.into_inner();
     if let Ok(Some(user)) = user::find_by_name(&form.name, &conn) {
         if user.verify_password(&form.password) {
-            session.set(Cookie::new("user_id", user.id.to_string()));
+            cookies.add_private(Cookie::new("user_id", user.id.to_string()));
             Flash::success(Redirect::to("/"), "Successfully logged in.")
         } else {
             Flash::error(Redirect::to("/login"), "Invalid username/password.")
@@ -127,9 +126,9 @@ fn do_login(mut session: Session, data: Form<LoginRequest>, conn: Connection) ->
 }
 
 #[post("/logout")]
-fn do_logout(mut session: Session, user: User) -> Flash<Redirect> {
+fn do_logout(mut cookies: Cookies, user: User) -> Flash<Redirect> {
     let cookie = Cookie::new("user_id", user.id.to_string());
-    session.remove(cookie);
+    cookies.remove_private(cookie);
 
     Flash::success(Redirect::to("/"), "You were logged out.")
 }
@@ -205,6 +204,11 @@ fn edit_post(id: i32, conn: Connection, user: User) -> Result<Option<Template>> 
     }
 }
 
+#[post("/post/<id>/edit", data = "<data>")]
+fn do_post_edit(id: i32, data: Form<CreatePostRequest>) -> Flash<Redirect> {
+    unimplemented!()
+}
+
 fn main() {
     config::configure_logger();
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -212,7 +216,7 @@ fn main() {
         .manage(db_util::init_pool(&database_url))
         .attach(Template::fairing())
         .mount("/",
-               routes![show_post, show_user, new_user, login, index, create_post,
+               routes![show_post, show_user, new_user, login, index, create_post, do_post_edit,
                        do_login, serve_static_file, do_logout, post_editor, get_by_tag, edit_post])
         .catch(errors![catch_404])
         .launch();

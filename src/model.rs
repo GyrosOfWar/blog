@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use chrono::{DateTime, UTC};
+use chrono::{DateTime, UTC, Datelike};
 use schema::*;
 use util;
 use rocket::request::{FromForm, FormItems};
@@ -29,6 +29,15 @@ impl Post {
                        Value::String(format!("{}", self.created_on.format("%Y-%m-%d"))));
         }
         value
+    }
+
+    pub fn url(&self) -> String {
+        let title = self.title.replace(' ', "-").to_lowercase();
+        format!("{}/{}/{}/{}", 
+            self.created_on.year(), 
+            self.created_on.month(),
+            self.created_on.day(), 
+            title)
     }
 }
 
@@ -72,7 +81,7 @@ impl CreatePostRequest {
 impl<'r> FromForm<'r> for CreatePostRequest {
     type Error = String;
 
-    fn from_form_items(form_items: &mut FormItems<'r>) -> Result<CreatePostRequest, Self::Error> {
+    fn from_form(form_items: &mut FormItems<'r>, _strict: bool) -> Result<CreatePostRequest, Self::Error> {
         lazy_static! {
             static ref TAGS_REGEX: Regex = Regex::new("\\s").unwrap();
         }
